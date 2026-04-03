@@ -1,0 +1,57 @@
+/*
+ * cascade-fix.css
+ *
+ * Why this file exists
+ * ─────────────────────────────────────────────────────────────────────────────
+ * CSS Cascade Level 5 rule: *unlayered* styles always beat *layered* styles
+ * in the same origin, regardless of specificity.
+ *
+ * A bare  `* { margin: 0; padding: 0; }`  outside any @layer is unlayered.
+ * Tailwind utilities live in  @layer utilities  (layered).
+ * Result: the `*` reset silently overrides every `mx-auto`, `px-*`, etc.
+ *
+ * Fix: repeat only what we need as unlayered rules AFTER the reset, so they
+ * win by cascade source-order at the same (unlayered) level.
+ * We also use :where() for the global reset so its specificity = 0, letting
+ * any class selector beat it even if both end up unlayered.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+/* ── Step 1: re-anchor the CSS reset inside :where() so specificity = 0 ─── */
+/* This means any class (.mx-auto etc.) with specificity [0,1,0] wins over it */
+:where(*, *::before, *::after) {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Step 2: explicit unlayered overrides for layout-critical utilities ───── */
+/* These have specificity [0,1,0] and are unlayered → beat the :where() reset */
+
+.mx-auto  { margin-left: auto; margin-right: auto; }
+.ml-auto  { margin-left: auto; }
+.mr-auto  { margin-right: auto; }
+.my-auto  { margin-top: auto; margin-bottom: auto; }
+.mt-auto  { margin-top: auto; }
+.mb-auto  { margin-bottom: auto; }
+
+/* Flex / grid centering helpers used across the site */
+.flex          { display: flex; }
+.inline-flex   { display: inline-flex; }
+.grid          { display: grid; }
+.block         { display: block; }
+.hidden        { display: none; }
+
+/* Container max-widths: guarantee they respect their max-width cap */
+.max-w-4xl   { max-width: 56rem; }
+.max-w-5xl   { max-width: 64rem; }
+.max-w-6xl   { max-width: 72rem; }
+.max-w-7xl   { max-width: 80rem; }
+.max-w-none  { max-width: none; }
+.w-full      { width: 100%; }
+
+/* Positioning */
+.relative { position: relative; }
+.absolute { position: absolute; }
+.fixed    { position: fixed; }
+.sticky   { position: sticky; }
