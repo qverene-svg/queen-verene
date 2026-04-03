@@ -4,6 +4,7 @@ import "./globals.css";
 import "./cascade-fix.css";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { Toaster } from "react-hot-toast";
+import { Analytics } from "@vercel/analytics/next";
 
 const playfairDisplay = Playfair_Display({
   subsets: ["latin"],
@@ -251,6 +252,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* eslint-disable-next-line react/no-danger */}
         <style dangerouslySetInnerHTML={{ __html: CRITICAL_CSS }} />
         <SiteShell>{children}</SiteShell>
+        <Analytics />
         <Toaster
           position="top-right"
           toastOptions={{
