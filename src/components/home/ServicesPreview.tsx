@@ -33,17 +33,30 @@ const services = [
 
 export function ServicesPreview() {
   return (
-    <section style={{ padding: "56px 40px", background: "#f9f7f2" }}>
+    <section style={{ padding: "48px 20px", background: "#f9f7f2" }}>
+      <style>{`
+        .sp-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+        }
+        @media (min-width: 768px) {
+          .sp-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        }
+        @media (min-width: 1024px) {
+          .sp-section { padding: 56px 40px !important; }
+        }
+      `}</style>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
 
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
           <motion.p
             initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.45 }}
-            style={{ color: "#b22222", fontSize: 10, fontWeight: 700, letterSpacing: "0.32em", textTransform: "uppercase", marginBottom: 8 }}
+            style={{ color: "#b22222", fontSize: 11, fontWeight: 700, letterSpacing: "0.28em", textTransform: "uppercase", marginBottom: 8 }}
           >
             What We Offer
           </motion.p>
@@ -52,14 +65,14 @@ export function ServicesPreview() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.08 }}
-            style={{ fontFamily: "var(--font-playfair),'Playfair Display',serif", fontSize: 32, color: "#0a0a0a", margin: 0 }}
+            style={{ fontFamily: "var(--font-playfair),'Playfair Display',serif", fontSize: "clamp(24px,5vw,32px)", color: "#0a0a0a", margin: 0 }}
           >
             Our Services
           </motion.h2>
         </div>
 
-        {/* 4-column desktop grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+        {/* Responsive grid: 2-col mobile → 4-col desktop */}
+        <div className="sp-grid">
           {services.map((service, i) => (
             <motion.div
               key={service.title}
@@ -72,7 +85,7 @@ export function ServicesPreview() {
                 className="group">
                 <div style={{ borderRadius: 12, overflow: "hidden", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", transition: "box-shadow 0.25s, transform 0.25s" }}
                   className="hover:shadow-md hover:-translate-y-px">
-                  {/* Image — square-ish */}
+                  {/* Image */}
                   <div style={{ position: "relative", aspectRatio: "4/5", overflow: "hidden", background: "#f0eeeb" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -86,15 +99,15 @@ export function ServicesPreview() {
                       <span style={{
                         position: "absolute", top: 10, left: 10,
                         background: "#b22222", color: "#fff",
-                        fontSize: 9, fontWeight: 700, letterSpacing: "0.18em",
-                        textTransform: "uppercase", padding: "3px 9px", borderRadius: 999,
+                        fontSize: 11, fontWeight: 700, letterSpacing: "0.14em",
+                        textTransform: "uppercase", padding: "4px 10px", borderRadius: 999,
                       }}>
                         {service.tag}
                       </span>
                     )}
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "10px 12px" }}>
-                      <p style={{ color: "#fff", fontSize: 12, fontWeight: 700, margin: "0 0 3px", lineHeight: 1.3 }}>{service.title}</p>
-                      <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 10, margin: 0, lineHeight: 1.5,
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 14px" }}>
+                      <p style={{ color: "#fff", fontSize: 13, fontWeight: 700, margin: "0 0 4px", lineHeight: 1.3 }}>{service.title}</p>
+                      <p style={{ color: "rgba(255,255,255,0.60)", fontSize: 11, margin: 0, lineHeight: 1.5,
                         display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                         {service.description}
                       </p>

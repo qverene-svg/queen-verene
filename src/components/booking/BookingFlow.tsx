@@ -89,13 +89,13 @@ export function BookingFlow({ mode = "standalone", onComplete }: BookingFlowProp
   return (
     <div>
       {/* Step indicator */}
-      <div className="flex items-center mb-14">
+      <div className="flex items-center mb-10">
         {STEPS.map(({ label, short }, i) => (
           <div key={label} className="flex items-center min-w-0 flex-1">
-            <div className="flex flex-col items-center gap-2 flex-1">
+            <div className="flex flex-col items-center gap-1.5 flex-1">
               <div
                 className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300",
+                  "w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 shrink-0",
                   i < step
                     ? "bg-[#b22222] text-white"
                     : i === step
@@ -110,15 +110,17 @@ export function BookingFlow({ mode = "standalone", onComplete }: BookingFlowProp
                 ) : short}
               </div>
               <span className={cn(
-                "text-[10px] font-semibold tracking-widest uppercase whitespace-nowrap",
+                "text-[11px] font-semibold tracking-wide uppercase text-center leading-tight px-1",
                 i <= step ? "text-[#0a0a0a]" : "text-black/25"
               )}>
-                {label}
+                {/* On very small screens show abbreviated label */}
+                <span className="hidden sm:inline">{label}</span>
+                <span className="sm:hidden">{label === "Date & Time" ? "Date" : label}</span>
               </span>
             </div>
             {i < STEPS.length - 1 && (
               <div className={cn(
-                "h-px flex-1 mx-2 mb-6 transition-all duration-500",
+                "h-px flex-1 mx-1 sm:mx-2 mb-7 transition-all duration-500",
                 i < step ? "bg-[#b22222]" : "bg-black/10"
               )} />
             )}
@@ -126,7 +128,7 @@ export function BookingFlow({ mode = "standalone", onComplete }: BookingFlowProp
         ))}
       </div>
 
-      <div className="bg-white rounded-3xl border border-black/8 shadow-sm p-8 md:p-10">
+      <div className="bg-white rounded-3xl border border-black/8 shadow-sm p-5 sm:p-8 md:p-10">
         <AnimatePresence mode="wait">
           <motion.div
             key={step}

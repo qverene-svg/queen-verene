@@ -159,9 +159,9 @@ function LuxuryBeautyHero({
           <motion.div custom={3} variants={fadeUp} initial="hidden" animate="visible"
             className="flex justify-center items-center">
             <motion.button onClick={handlePrimary} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-              className="group relative px-16 py-5 bg-gradient-to-r from-[#8b1a1a] to-[#b22222] text-white rounded-full font-semibold overflow-hidden shadow-2xl hover:shadow-[#b22222]/50 min-w-[300px]"
+              className="group relative px-8 sm:px-16 py-4 sm:py-5 bg-gradient-to-r from-[#8b1a1a] to-[#b22222] text-white rounded-full font-semibold overflow-hidden shadow-2xl hover:shadow-[#b22222]/50 w-full sm:w-auto max-w-xs sm:max-w-none"
               style={{ fontFamily: "var(--font-montserrat), sans-serif" }}>
-              <span className="relative z-10 tracking-[0.18em] uppercase text-base">{primaryCTA.text}</span>
+              <span className="relative z-10 tracking-[0.14em] uppercase text-sm sm:text-base">{primaryCTA.text}</span>
               <div className="absolute inset-0 bg-gradient-to-r from-[#b22222] to-[#cc2929] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </motion.button>
           </motion.div>

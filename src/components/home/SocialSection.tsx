@@ -78,7 +78,21 @@ const SOCIALS = [
 
 export function SocialSection() {
   return (
-    <section style={{ padding: "40px 40px", background: "#0a0a0a", position: "relative", overflow: "hidden" }}>
+    <section style={{ padding: "40px 20px", background: "#0a0a0a", position: "relative", overflow: "hidden" }}>
+      <style>{`
+        .ss-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+        @media (min-width: 480px) {
+          .ss-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (min-width: 900px) {
+          .ss-grid { grid-template-columns: repeat(4, 1fr); }
+          .ss-section { padding: 40px 40px !important; }
+        }
+      `}</style>
       {/* Subtle ambient glow */}
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
@@ -95,13 +109,13 @@ export function SocialSection() {
           transition={{ duration: 0.45 }}
           style={{ textAlign: "center", marginBottom: 24 }}
         >
-          <p style={{ color: "#d4af37", fontSize: 9, fontWeight: 700, letterSpacing: "0.35em", textTransform: "uppercase", marginBottom: 6 }}>
+          <p style={{ color: "#d4af37", fontSize: 11, fontWeight: 700, letterSpacing: "0.28em", textTransform: "uppercase", marginBottom: 6 }}>
             Follow Along
           </p>
-          <h2 style={{ fontFamily: "var(--font-playfair),'Playfair Display',serif", fontSize: 26, color: "#fff", margin: "0 0 6px" }}>
+          <h2 style={{ fontFamily: "var(--font-playfair),'Playfair Display',serif", fontSize: "clamp(22px,5vw,28px)", color: "#fff", margin: "0 0 6px" }}>
             Find Us Online
           </h2>
-          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, maxWidth: 340, margin: "0 auto", lineHeight: 1.6 }}>
+          <p style={{ color: "rgba(255,255,255,0.40)", fontSize: 13, maxWidth: 340, margin: "0 auto", lineHeight: 1.6 }}>
             Stay connected for inspiration, behind-the-scenes looks, and exclusive offers.
           </p>
         </motion.div>
@@ -109,8 +123,8 @@ export function SocialSection() {
         {/* Divider */}
         <div style={{ height: 1, background: "linear-gradient(to right,transparent,rgba(212,175,55,0.25),transparent)", marginBottom: 20 }} />
 
-        {/* 4-column grid — desktop only, no responsive classes */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+        {/* Responsive grid: 1-col mobile → 2-col tablet → 4-col desktop */}
+        <div className="ss-grid">
           {SOCIALS.map(({ label, handle, href, Icon, grad, hoverBg }, i) => (
             <motion.a
               key={label}
@@ -123,8 +137,8 @@ export function SocialSection() {
               transition={{ duration: 0.4, delay: i * 0.07 }}
               whileHover={{ scale: 1.025, y: -2 }}
               style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "10px 12px", borderRadius: 10, cursor: "pointer", textDecoration: "none",
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "14px 16px", borderRadius: 12, cursor: "pointer", textDecoration: "none",
                 border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.025)",
                 transition: "background 0.25s, border-color 0.25s",
                 position: "relative", overflow: "hidden",
@@ -134,19 +148,19 @@ export function SocialSection() {
             >
               {/* Icon bubble */}
               <div style={{
-                width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                width: 40, height: 40, borderRadius: 10, flexShrink: 0,
                 background: grad, display: "flex", alignItems: "center", justifyContent: "center",
                 color: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
               }}>
-                <Icon size={16} />
+                <Icon size={20} />
               </div>
 
               {/* Text */}
               <div style={{ minWidth: 0 }}>
-                <p style={{ color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", margin: 0, lineHeight: 1 }}>
+                <p style={{ color: "#fff", fontSize: 13, fontWeight: 700, letterSpacing: "0.04em", margin: 0, lineHeight: 1 }}>
                   {label}
                 </p>
-                <p style={{ color: "rgba(255,255,255,0.32)", fontSize: 9, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {handle}
                 </p>
               </div>

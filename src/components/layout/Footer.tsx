@@ -224,15 +224,28 @@ export function Footer() {
       </div>
 
       {/* Bottom bar */}
+      <style>{`
+        .footer-bottom {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          text-align: center;
+        }
+        @media (min-width: 640px) {
+          .footer-bottom {
+            flex-direction: row;
+            justify-content: space-between;
+            text-align: left;
+          }
+        }
+      `}</style>
       <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        <div style={{
-          maxWidth: 1280, margin: "0 auto", padding: "18px 28px",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-        }}>
-          <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 11 }}>
+        <div className="footer-bottom" style={{ maxWidth: 1280, margin: "0 auto", padding: "18px 28px" }}>
+          <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 12 }}>
             © {new Date().getFullYear()} Queen Verene. All rights reserved.
           </p>
-          <p style={{ color: "rgba(255,255,255,0.18)", fontSize: 11 }}>
+          <p style={{ color: "rgba(255,255,255,0.18)", fontSize: 12 }}>
             Crafted with elegance for the modern Ghanaian woman.
           </p>
         </div>

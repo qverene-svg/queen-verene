@@ -56,32 +56,32 @@ export function DateTimeStep({
       {/* ── Month calendar ─────────────────────────────── */}
       <div className="mb-8 bg-white border border-black/8 rounded-2xl overflow-hidden">
         {/* Month navigation */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-black/8">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-black/8">
           <button
             onClick={() => setMonth((m) => subMonths(m, 1))}
             disabled={isBefore(endOfMonth(subMonths(month, 1)), today)}
-            className="p-1.5 rounded-lg hover:bg-black/5 disabled:opacity-25 transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-xl hover:bg-black/5 disabled:opacity-25 transition-colors"
             aria-label="Previous month"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={18} />
           </button>
           <span className="text-sm font-semibold text-[#0a0a0a]">
             {format(month, "MMMM yyyy")}
           </span>
           <button
             onClick={() => setMonth((m) => addMonths(m, 1))}
-            className="p-1.5 rounded-lg hover:bg-black/5 transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-xl hover:bg-black/5 transition-colors"
             aria-label="Next month"
           >
-            <ChevronRight size={16} />
+            <ChevronRight size={18} />
           </button>
         </div>
 
         {/* Day-of-week headers */}
         <div className="grid grid-cols-7 border-b border-black/6">
           {WEEKDAYS.map((d) => (
-            <div key={d} className="py-2 text-center text-[10px] font-semibold tracking-widest uppercase text-[#0a0a0a]/35">
-              {d}
+            <div key={d} className="py-2 text-center text-[11px] font-semibold tracking-wider uppercase text-[#0a0a0a]/35">
+              {d.slice(0, 2)}
             </div>
           ))}
         </div>
@@ -100,7 +100,7 @@ export function DateTimeStep({
                 disabled={isPast || isOtherMonth}
                 onClick={() => { setDate(day); setTime(undefined); }}
                 className={cn(
-                  "relative h-10 flex items-center justify-center text-sm transition-all duration-150",
+                  "relative h-12 flex items-center justify-center text-sm transition-all duration-150",
                   // grid lines
                   idx % 7 !== 6 && "border-r border-black/5",
                   Math.floor(idx / 7) < Math.floor((calDays.length - 1) / 7) && "border-b border-black/5",
@@ -130,13 +130,13 @@ export function DateTimeStep({
           <p className="text-xs font-semibold tracking-widest uppercase text-[#0a0a0a]/40 mb-3">
             Available Times — {format(date, "EEEE, MMMM d")}
           </p>
-          <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-9 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2">
             {TIME_SLOTS.map((slot) => (
               <button
                 key={slot}
                 onClick={() => setTime(slot)}
                 className={cn(
-                  "py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all duration-150",
+                  "py-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-150 min-h-[44px]",
                   time === slot
                     ? "bg-[#b22222] text-white shadow-sm"
                     : "bg-white border border-black/10 text-[#0a0a0a]/60 hover:border-[#d4af37] hover:text-[#0a0a0a]"
@@ -163,9 +163,9 @@ export function DateTimeStep({
         />
       </div>
 
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={onBack} size="lg">Back</Button>
-        <Button onClick={handleNext} disabled={!date || !time} size="lg" className="gap-2">
+      <div className="flex flex-col-reverse sm:flex-row justify-between gap-3">
+        <Button variant="outline" onClick={onBack} size="lg" className="w-full sm:w-auto">Back</Button>
+        <Button onClick={handleNext} disabled={!date || !time} size="lg" className="gap-2 w-full sm:w-auto">
           Continue <ArrowRight size={16} />
         </Button>
       </div>

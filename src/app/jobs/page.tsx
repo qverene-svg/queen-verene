@@ -79,7 +79,7 @@ export default function JobsPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
         {/* Culture section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
           {[
@@ -117,7 +117,7 @@ export default function JobsPage() {
             >
               {/* Accent bar */}
               <div className="h-1 bg-gradient-to-r from-[#b22222] to-[#d4af37] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="p-7 sm:p-9">
+              <div className="p-5 sm:p-7 lg:p-9">
                 <div className="flex items-start justify-between gap-6">
                   <div className="flex-1">
                     {/* Role badge row */}

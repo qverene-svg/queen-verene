@@ -158,7 +158,7 @@ export function ServiceStep({
       </div>
 
       <div className="mt-10 flex justify-end">
-        <Button onClick={handleNext} disabled={!picked} size="lg" className="gap-2">
+        <Button onClick={handleNext} disabled={!picked} size="lg" className="gap-2 w-full sm:w-auto">
           Continue <ArrowRight size={16} />
         </Button>
       </div>

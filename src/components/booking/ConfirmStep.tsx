@@ -230,13 +230,14 @@ export function ConfirmStep({ booking, onBack, onComplete }: ConfirmStepProps) {
         </div>
       )}
 
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={onBack} size="lg">Back</Button>
+      <div className="flex flex-col-reverse sm:flex-row justify-between gap-3">
+        <Button variant="outline" onClick={onBack} size="lg" className="w-full sm:w-auto">Back</Button>
         <Button
           onClick={handlePay}
           loading={loading}
           size="lg"
           disabled={!name.trim() || (!hasPhone && !hasEmail) || (hasBoth && !reminderChannel)}
+          className="w-full sm:w-auto"
         >
           Pay GHS 50 Deposit via Hubtel
         </Button>

@@ -68,7 +68,7 @@ export function Navbar() {
 
             <button
               type="button"
-              className="md:hidden p-2 text-white/70 hover:text-white -mr-2"
+              className="md:hidden w-11 h-11 flex items-center justify-center text-white/70 hover:text-white -mr-1 rounded-lg"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Toggle menu"
             >

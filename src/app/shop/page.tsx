@@ -90,7 +90,7 @@ export default function ShopPage() {
               <button
                 key={cat}
                 onClick={() => setFilter(cat)}
-                className={`px-3 py-1 rounded-full text-[10px] font-semibold tracking-widest uppercase transition-all ${
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider uppercase transition-all ${
                   filter === cat
                     ? "bg-[#0a0a0a] text-white"
                     : "bg-white border border-black/10 text-[#0a0a0a]/50 hover:bg-black/5"
@@ -107,8 +107,18 @@ export default function ShopPage() {
           </p>
         </div>
 
-        {/* ── Product grid — desktop 4-col ────────────────── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+        {/* ── Product grid — 2-col mobile → 4-col desktop ── */}
+        <style>{`
+          .shop-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+          }
+          @media (min-width: 640px)  { .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; } }
+          @media (min-width: 900px)  { .shop-grid { grid-template-columns: repeat(3, 1fr); } }
+          @media (min-width: 1200px) { .shop-grid { grid-template-columns: repeat(4, 1fr); } }
+        `}</style>
+        <div className="shop-grid">
           {filtered.map((product, i) => (
             <motion.div
               key={product.id}
@@ -138,30 +148,30 @@ export default function ShopPage() {
               </div>
 
               {/* Info */}
-              <div style={{ padding: "10px 12px 12px" }}>
-                <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#b22222", margin: "0 0 3px" }}>{product.category}</p>
-                <h3 style={{ fontSize: 12, fontWeight: 700, color: "#0a0a0a", margin: "0 0 4px", lineHeight: 1.3,
+              <div style={{ padding: "12px 14px 14px" }}>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#b22222", margin: "0 0 4px" }}>{product.category}</p>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: "#0a0a0a", margin: "0 0 5px", lineHeight: 1.3,
                   fontFamily: "var(--font-outfit),sans-serif",
-                  display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                   {product.name}
                 </h3>
-                <p style={{ fontSize: 10, color: "rgba(10,10,10,0.4)", margin: "0 0 10px", lineHeight: 1.5,
+                <p style={{ fontSize: 12, color: "rgba(10,10,10,0.45)", margin: "0 0 12px", lineHeight: 1.5,
                   display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                   {product.description}
                 </p>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#0a0a0a" }}>{formatCurrency(product.price)}</span>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#0a0a0a" }}>{formatCurrency(product.price)}</span>
                   {product.is_available ? (
                     <button
                       onClick={() => inquire(product)}
-                      style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", background: "#0a0a0a", color: "#fff", fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", borderRadius: 7, border: "none", cursor: "pointer", transition: "background 0.18s" }}
+                      style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 12px", background: "#0a0a0a", color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", borderRadius: 8, border: "none", cursor: "pointer", transition: "background 0.18s", minHeight: 36 }}
                       className="hover:!bg-[#b22222]"
                     >
-                      <MessageCircle size={10} />
+                      <MessageCircle size={12} />
                       Enquire
                     </button>
                   ) : (
-                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(10,10,10,0.22)" }}>Unavailable</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase", color: "rgba(10,10,10,0.25)" }}>Unavailable</span>
                   )}
                 </div>
               </div>
