@@ -2,12 +2,12 @@
 
 import { motion } from "framer-motion";
 
-import { WHATSAPP_BUSINESS_NUMBER, formatGhanaPhoneDisplay, waMeDigits } from "@/lib/contact";
+import { WHATSAPP_BUSINESS_NUMBER, formatGhanaPhoneDisplay, businessWhatsAppHref } from "@/lib/contact";
 
 const INSTAGRAM_URL = "https://www.instagram.com/Queenverene_beauty/";
 const TIKTOK_URL    = "https://www.tiktok.com/@Queen.Verene";
 const FACEBOOK_URL  = "https://www.facebook.com/Queen-Verene-Hair";
-const WHATSAPP_URL  = `https://wa.me/${waMeDigits(WHATSAPP_BUSINESS_NUMBER)}`;
+const WHATSAPP_URL  = businessWhatsAppHref();
 
 function InstagramIcon({ size = 20 }: { size?: number }) {
   return (

@@ -3,8 +3,9 @@ import { Phone, Mail, MapPin } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import {
   WHATSAPP_BUSINESS_NUMBER,
-  SECONDARY_CALL_NUMBER,
+  CALL_NUMBER,
   formatGhanaPhoneDisplay,
+  businessWhatsAppHref,
 } from "@/lib/contact";
 
 const footerLinks = {
@@ -109,23 +110,35 @@ export function Footer() {
                 <MapPin size={13} style={{ marginTop: 2, flexShrink: 0, color: "#b22222" }} />
                 <span>Accra, Ghana</span>
               </li>
-              <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-                <Phone size={13} style={{ flexShrink: 0, color: "#b22222" }} />
-                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                  <a href={`tel:${WHATSAPP_BUSINESS_NUMBER}`}
-                    style={{ color: "rgba(255,255,255,0.45)", textDecoration: "none", transition: "color 0.18s" }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#fff"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)"; }}
-                  >
-                    {formatGhanaPhoneDisplay(WHATSAPP_BUSINESS_NUMBER)}
-                  </a>
-                  <a href={`tel:${SECONDARY_CALL_NUMBER}`}
-                    style={{ color: "rgba(255,255,255,0.35)", textDecoration: "none", fontSize: 12, transition: "color 0.18s" }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#fff"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.35)"; }}
-                  >
-                    {formatGhanaPhoneDisplay(SECONDARY_CALL_NUMBER)}
-                  </a>
+              <li style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13 }}>
+                <Phone size={13} style={{ marginTop: 2, flexShrink: 0, color: "#b22222" }} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div>
+                    <span style={{ display: "block", fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 3 }}>
+                      WhatsApp
+                    </span>
+                    <a href={businessWhatsAppHref()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: "rgba(255,255,255,0.45)", textDecoration: "none", transition: "color 0.18s" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#fff"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)"; }}
+                    >
+                      {formatGhanaPhoneDisplay(WHATSAPP_BUSINESS_NUMBER)}
+                    </a>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 3 }}>
+                      Call
+                    </span>
+                    <a href={`tel:${CALL_NUMBER}`}
+                      style={{ color: "rgba(255,255,255,0.45)", textDecoration: "none", transition: "color 0.18s" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#fff"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)"; }}
+                    >
+                      {formatGhanaPhoneDisplay(CALL_NUMBER)}
+                    </a>
+                  </div>
                 </div>
               </li>
               <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
