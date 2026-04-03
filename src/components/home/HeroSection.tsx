@@ -2,11 +2,10 @@
 
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Scissors } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// ── Floating nav (MCP magic — adapted for Queen Verene) ──────────────────────
 
 const NAV_LINKS = [
   { label: "Home",     href: "/"          },
@@ -16,192 +15,185 @@ const NAV_LINKS = [
   { label: "Jobs",     href: "/jobs"      },
 ];
 
-function FloatingNav() {
-  const pathname = usePathname();
+export function HeroSection() {
+  const [loaded, setLoaded] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => setLoaded(true), []);
+
+  const fade = (delay: number) => ({
+    initial: { opacity: 0, y: 24 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.85, delay, ease: [0.25, 0.4, 0.25, 1] as const },
+  });
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 1.8, duration: 0.5 }}
-      className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 w-max max-w-[calc(100vw-2rem)]"
-    >
-      <nav className="flex items-center gap-1 rounded-full bg-black/40 backdrop-blur-md border border-white/[0.14] px-2 py-2 shadow-2xl">
-        {NAV_LINKS.map((link) => {
-          const isActive    = pathname === link.href;
-          const isHighlight = link.highlight;
+    <div className="relative min-h-screen w-full flex flex-col overflow-hidden bg-black">
 
-          return (
+      {/* ── Background ─────────────────────────────── */}
+      <div className="absolute inset-0">
+        <motion.img
+          src="https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=2074&auto=format&fit=crop"
+          alt=""
+          className="w-full h-full object-cover"
+          initial={{ opacity: 0, scale: 1.06 }}
+          animate={{ opacity: loaded ? 1 : 0, scale: 1 }}
+          transition={{ duration: 1.6, ease: "easeOut" }}
+          onLoad={() => setLoaded(true)}
+        />
+        {/* Dark overlay — heavier at top and bottom */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/40 to-black/80" />
+        {/* Subtle vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.55)_100%)]" />
+      </div>
+
+      {/* ── Gold top rule ───────────────────────────── */}
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#d4af37] to-transparent z-20" />
+
+      {/* ── Main content — vertically centered ──────── */}
+      <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-5 sm:px-8 text-center pt-24 pb-40">
+
+        {/* Eyebrow */}
+        <motion.div {...fade(0.3)} className="flex items-center gap-2.5 mb-6">
+          <div className="h-px w-8 bg-[#d4af37]/60" />
+          <Scissors size={13} className="text-[#d4af37] rotate-45 shrink-0" />
+          <span className="text-[#d4af37] text-[11px] font-bold tracking-[0.35em] uppercase">
+            Queen Verene Beauty Studio
+          </span>
+          <Scissors size={13} className="text-[#d4af37] -rotate-45 shrink-0" />
+          <div className="h-px w-8 bg-[#d4af37]/60" />
+        </motion.div>
+
+        {/* Headline — fluid, never clips */}
+        <motion.h1
+          {...fade(0.55)}
+          className="font-bold leading-[1.08] tracking-tight mb-6 max-w-4xl"
+          style={{
+            fontFamily: "var(--font-playfair), 'Playfair Display', serif",
+            fontSize: "clamp(2.4rem, 7vw, 5.5rem)",
+          }}
+        >
+          <span className="block text-white">Where Beauty</span>
+          <span className="block" style={{
+            background: "linear-gradient(135deg,#d4af37 0%,#f5d76e 45%,#d4af37 75%,#b8960c 100%)",
+            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+          }}>
+            Meets Elegance
+          </span>
+        </motion.h1>
+
+        {/* Gold divider */}
+        <motion.div {...fade(0.7)} className="flex items-center gap-3 mb-8">
+          <div className="h-px w-12 sm:w-20 bg-gradient-to-r from-transparent to-[#d4af37]/50" />
+          <div className="w-1.5 h-1.5 rounded-full bg-[#d4af37]/70" />
+          <div className="h-px w-12 sm:w-20 bg-gradient-to-l from-transparent to-[#d4af37]/50" />
+        </motion.div>
+
+        {/* Subtitle */}
+        <motion.p
+          {...fade(0.85)}
+          className="text-white/65 max-w-lg mx-auto leading-relaxed mb-10"
+          style={{
+            fontFamily: "var(--font-montserrat), sans-serif",
+            fontSize: "clamp(0.9rem, 2.2vw, 1.1rem)",
+          }}
+        >
+          Braiding, pedicures, wigs, makeup, and hair care —<br className="hidden sm:block" />
+          curated for the discerning Ghanaian woman.
+        </motion.p>
+
+        {/* CTA buttons */}
+        <motion.div {...fade(1.0)} className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <motion.button
+            onClick={() => router.push("/services")}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="group relative overflow-hidden rounded-full text-white font-semibold shadow-2xl hover:shadow-[#b22222]/40 w-full sm:w-auto"
+            style={{
+              background: "linear-gradient(135deg,#8b1a1a,#b22222)",
+              fontFamily: "var(--font-montserrat), sans-serif",
+              padding: "14px 36px",
+              fontSize: "0.8rem",
+              letterSpacing: "0.15em",
+              textTransform: "uppercase",
+            }}
+          >
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              Book an Appointment <ArrowRight size={15} />
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#b22222] to-[#cc2929] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          </motion.button>
+
+          <Link
+            href="/services"
+            className="text-white/70 hover:text-white text-xs font-semibold tracking-[0.18em] uppercase border border-white/20 hover:border-white/50 rounded-full px-8 py-3.5 transition-all w-full sm:w-auto text-center"
+            style={{ fontFamily: "var(--font-montserrat), sans-serif" }}
+          >
+            View Our Services
+          </Link>
+        </motion.div>
+
+        {/* Trust badges */}
+        <motion.div {...fade(1.15)} className="flex items-center gap-6 mt-10 flex-wrap justify-center">
+          {[
+            { num: "500+", label: "Happy Clients" },
+            { num: "8+",   label: "Service Types" },
+            { num: "5★",   label: "Rated Salon" },
+          ].map(({ num, label }) => (
+            <div key={label} className="text-center">
+              <p className="text-white font-bold" style={{ fontSize: "1.1rem" }}>{num}</p>
+              <p className="text-white/40 uppercase tracking-widest" style={{ fontSize: "0.65rem" }}>{label}</p>
+            </div>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* ── Floating bottom nav ──────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.4, duration: 0.5 }}
+        className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 w-max max-w-[calc(100vw-2rem)]"
+      >
+        <nav className={cn(
+          "flex items-center gap-0.5 rounded-full px-2 py-2 shadow-2xl",
+          "bg-black/50 backdrop-blur-md border border-white/[0.12]"
+        )}>
+          {NAV_LINKS.map((link) => (
             <Link
               key={link.label}
               href={link.href}
               className={cn(
-                "px-4 py-2 rounded-full text-xs font-semibold tracking-[0.12em] uppercase transition-all duration-300 whitespace-nowrap",
-                isHighlight
-                  ? "border border-[#d4af37]/70 text-[#f5d76e] hover:bg-[#d4af37]/15 hover:border-[#d4af37]"
-                  : isActive
-                  ? "bg-white/20 text-white"
-                  : "text-white/65 hover:bg-white/10 hover:text-white"
+                "px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.1em] uppercase transition-all duration-200 whitespace-nowrap",
+                link.highlight
+                  ? "border border-[#d4af37]/60 text-[#f5d76e] hover:bg-[#d4af37]/15"
+                  : "text-white/60 hover:bg-white/10 hover:text-white"
               )}
             >
               {link.label}
             </Link>
-          );
-        })}
-      </nav>
-    </motion.div>
-  );
-}
+          ))}
+        </nav>
+      </motion.div>
 
-// ── Hero ──────────────────────────────────────────────────────────────────────
-
-interface LuxuryBeautyHeroProps {
-  headline?: string;
-  subtitle?: string;
-  primaryCTA?: { text: string; href?: string; onClick?: () => void };
-  backgroundImage?: string;
-  className?: string;
-}
-
-function LuxuryBeautyHero({
-  headline = "Where Beauty\nMeets Elegance",
-  subtitle = "Braiding, pedicures, wigs, makeup, and hair care — curated for the discerning Ghanaian woman.",
-  primaryCTA   = { text: "Experience our Services", href: "/services" },
-  backgroundImage = "https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=2074&auto=format&fit=crop",
-  className = "",
-}: LuxuryBeautyHeroProps) {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const router = useRouter();
-
-  useEffect(() => { setIsLoaded(true); }, []);
-
-  const fadeUp = {
-    hidden:  { opacity: 0, y: 30 },
-    visible: (i: number) => ({
-      opacity: 1, y: 0,
-      transition: { duration: 1.2, delay: 0.3 + i * 0.2, ease: [0.25, 0.4, 0.25, 1] as const },
-    }),
-  };
-
-  const handlePrimary = () => { if (primaryCTA.onClick) primaryCTA.onClick(); else if (primaryCTA.href) router.push(primaryCTA.href); };
-
-  const [line1, line2] = headline.split("\n");
-
-  return (
-    <div className={cn(
-      "relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-black",
-      className
-    )}>
-      {/* Gold top rule */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#d4af37] to-transparent z-20" />
-
-      {/* Background */}
-      <div className="absolute inset-0">
-        <motion.div
-          initial={{ scale: 1.1, opacity: 0 }}
-          animate={{ scale: 1, opacity: isLoaded ? 1 : 0 }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
-          className="absolute inset-0"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={backgroundImage}
-            alt="Verene Beauty Studio"
-            className="w-full h-full object-cover"
-            onLoad={() => setIsLoaded(true)}
-            onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                "https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=2074&auto=format&fit=crop";
-            }}
-          />
-        </motion.div>
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/55 to-black/85" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
-      </div>
-
-      {/* Hero content */}
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-6 md:px-12">
-        <div className="max-w-4xl mx-auto text-center">
-
-          {/* Headline */}
-          <motion.div custom={1} variants={fadeUp} initial="hidden" animate="visible">
-            <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-[7rem] font-bold mb-8 tracking-tight leading-none"
-              style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif" }}>
-              {line2 ? (
-                <>
-                  <span className="block bg-clip-text text-transparent bg-gradient-to-b from-white via-white/95 to-white/80">
-                    {line1}
-                  </span>
-                  <span className="block" style={{
-                    background: "linear-gradient(135deg, #d4af37 0%, #f5d76e 40%, #d4af37 70%, #b8960c 100%)",
-                    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-                  }}>
-                    {line2}
-                  </span>
-                </>
-              ) : (
-                <span className="block bg-clip-text text-transparent bg-gradient-to-b from-white via-white/95 to-white/80">
-                  {headline}
-                </span>
-              )}
-            </h1>
-          </motion.div>
-
-          {/* Subtitle */}
-          <motion.div custom={2} variants={fadeUp} initial="hidden" animate="visible">
-            <p className="text-lg sm:text-xl md:text-2xl text-white/65 mb-12 leading-relaxed font-light tracking-wide max-w-2xl mx-auto"
-              style={{ fontFamily: "var(--font-montserrat), sans-serif" }}>
-              {subtitle}
-            </p>
-          </motion.div>
-
-          {/* CTA */}
-          <motion.div custom={3} variants={fadeUp} initial="hidden" animate="visible"
-            className="flex justify-center items-center">
-            <motion.button onClick={handlePrimary} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-              className="group relative px-8 sm:px-16 py-4 sm:py-5 bg-gradient-to-r from-[#8b1a1a] to-[#b22222] text-white rounded-full font-semibold overflow-hidden shadow-2xl hover:shadow-[#b22222]/50 w-full sm:w-auto max-w-xs sm:max-w-none"
-              style={{ fontFamily: "var(--font-montserrat), sans-serif" }}>
-              <span className="relative z-10 tracking-[0.14em] uppercase text-sm sm:text-base">{primaryCTA.text}</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-[#b22222] to-[#cc2929] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            </motion.button>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Bottom fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-36 bg-gradient-to-t from-black to-transparent pointer-events-none" />
-
-      {/* ── Floating nav (MCP magic) ── */}
-      <FloatingNav />
-
-      {/* Scroll indicator — sits below the floating nav */}
+      {/* ── Scroll cue ──────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 2.0 }}
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20"
+        transition={{ delay: 2.2 }}
+        className="absolute bottom-[4.5rem] right-6 z-20 hidden sm:block"
       >
-        <motion.div
-          animate={{ y: [0, 7, 0] }}
-          transition={{ repeat: Infinity, duration: 1.6 }}
-          className="w-5 h-8 border-2 border-white/20 rounded-full flex items-start justify-center pt-1.5"
-        >
-          <div className="w-1 h-2 bg-white/40 rounded-full" />
-        </motion.div>
+        <div className="flex flex-col items-center gap-1.5">
+          <p className="text-white/25 text-[9px] tracking-[0.25em] uppercase" style={{ writingMode: "vertical-rl" }}>
+            Scroll
+          </p>
+          <motion.div
+            animate={{ y: [0, 6, 0] }}
+            transition={{ repeat: Infinity, duration: 1.8 }}
+            className="w-px h-8 bg-gradient-to-b from-white/30 to-transparent"
+          />
+        </div>
       </motion.div>
     </div>
-  );
-}
-
-// ── Export ────────────────────────────────────────────────────────────────────
-
-export function HeroSection() {
-  return (
-    <LuxuryBeautyHero
-      headline={"Where Beauty\nMeets Elegance"}
-      subtitle="Braiding, pedicures, wigs, makeup, and hair care — curated for the discerning Ghanaian woman."
-      primaryCTA={{ text: "Experience our Services", href: "/services" }}
-      backgroundImage="https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=2074&auto=format&fit=crop"
-    />
   );
 }
