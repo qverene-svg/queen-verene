@@ -102,8 +102,8 @@ export function HeroSection() {
           curated for the discerning Ghanaian woman.
         </motion.p>
 
-        {/* CTA buttons */}
-        <motion.div {...fade(1.0)} className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+        {/* CTA button */}
+        <motion.div {...fade(1.0)} className="flex justify-center">
           <motion.button
             onClick={() => router.push("/services")}
             whileHover={{ scale: 1.03 }}
@@ -112,39 +112,17 @@ export function HeroSection() {
             style={{
               background: "linear-gradient(135deg,#8b1a1a,#b22222)",
               fontFamily: "var(--font-montserrat), sans-serif",
-              padding: "14px 36px",
+              padding: "14px 40px",
               fontSize: "0.8rem",
               letterSpacing: "0.15em",
               textTransform: "uppercase",
             }}
           >
             <span className="relative z-10 flex items-center justify-center gap-2">
-              Book an Appointment <ArrowRight size={15} />
+              View Our Services <ArrowRight size={15} />
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-[#b22222] to-[#cc2929] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </motion.button>
-
-          <Link
-            href="/services"
-            className="text-white/70 hover:text-white text-xs font-semibold tracking-[0.18em] uppercase border border-white/20 hover:border-white/50 rounded-full px-8 py-3.5 transition-all w-full sm:w-auto text-center"
-            style={{ fontFamily: "var(--font-montserrat), sans-serif" }}
-          >
-            View Our Services
-          </Link>
-        </motion.div>
-
-        {/* Trust badges */}
-        <motion.div {...fade(1.15)} className="flex items-center gap-6 mt-10 flex-wrap justify-center">
-          {[
-            { num: "500+", label: "Happy Clients" },
-            { num: "8+",   label: "Service Types" },
-            { num: "5★",   label: "Rated Salon" },
-          ].map(({ num, label }) => (
-            <div key={label} className="text-center">
-              <p className="text-white font-bold" style={{ fontSize: "1.1rem" }}>{num}</p>
-              <p className="text-white/40 uppercase tracking-widest" style={{ fontSize: "0.65rem" }}>{label}</p>
-            </div>
-          ))}
         </motion.div>
       </div>
 
@@ -156,7 +134,7 @@ export function HeroSection() {
         className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 w-max max-w-[calc(100vw-2rem)]"
       >
         <nav className={cn(
-          "flex items-center gap-0.5 rounded-full px-2 py-2 shadow-2xl",
+          "flex items-center gap-1 rounded-full px-3 py-2 shadow-2xl",
           "bg-black/50 backdrop-blur-md border border-white/[0.12]"
         )}>
           {NAV_LINKS.map((link) => (
@@ -164,7 +142,7 @@ export function HeroSection() {
               key={link.label}
               href={link.href}
               className={cn(
-                "px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.1em] uppercase transition-all duration-200 whitespace-nowrap",
+                "px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] uppercase transition-all duration-200 whitespace-nowrap",
                 link.highlight
                   ? "border border-[#d4af37]/60 text-[#f5d76e] hover:bg-[#d4af37]/15"
                   : "text-white/60 hover:bg-white/10 hover:text-white"
