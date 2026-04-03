@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { CheckCircle2, Calendar, Clock, Scissors, MessageCircle, Mail, Phone } from "lucide-react";
+import { CheckCircle2, Calendar, Clock, Scissors, Smartphone, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -11,7 +11,7 @@ import toast from "react-hot-toast";
 /** Fixed GHS 50 deposit (in pesewas) */
 const DEPOSIT_PESEWAS = 5000;
 
-export type ReminderChannel = "whatsapp" | "email";
+export type ReminderChannel = "sms" | "email";
 
 interface ConfirmStepProps {
   booking: BookingData;
@@ -38,7 +38,7 @@ export function ConfirmStep({ booking, onBack, onComplete }: ConfirmStepProps) {
   const effectiveChannel: ReminderChannel | null = hasBoth
     ? reminderChannel
     : hasPhone
-    ? "whatsapp"
+    ? "sms"
     : hasEmail
     ? "email"
     : null;
@@ -49,7 +49,7 @@ export function ConfirmStep({ booking, onBack, onComplete }: ConfirmStepProps) {
       return;
     }
     if (!hasPhone && !hasEmail) {
-      toast.error("Please enter a WhatsApp number or email address.");
+      toast.error("Please enter a phone number or email address.");
       return;
     }
     if (hasBoth && !reminderChannel) {
@@ -97,7 +97,7 @@ export function ConfirmStep({ booking, onBack, onComplete }: ConfirmStepProps) {
         <h2 className="font-[Playfair_Display] text-2xl text-[#0a0a0a] mb-2">Booking Confirmed!</h2>
         <p className="text-[#0a0a0a]/60 max-w-md mx-auto text-sm leading-relaxed">
           Thank you, {name}. You&apos;ll receive a confirmation{" "}
-          {effectiveChannel === "whatsapp" ? "via WhatsApp" : "by email"} shortly. We can&apos;t wait to see you!
+          {effectiveChannel === "sms" ? "by SMS" : "by email"} shortly. We can&apos;t wait to see you!
         </p>
       </motion.div>
     );
@@ -153,7 +153,7 @@ export function ConfirmStep({ booking, onBack, onComplete }: ConfirmStepProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Input
-              label="WhatsApp Number"
+              label="Mobile number (SMS)"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="0244 000 000"
@@ -176,7 +176,7 @@ export function ConfirmStep({ booking, onBack, onComplete }: ConfirmStepProps) {
         {/* Contact required hint */}
         {!hasPhone && !hasEmail && (
           <p className="text-[11px] text-[#b22222]/80 font-medium">
-            Please enter at least a WhatsApp number or email address.
+            Please enter at least a phone number or email address.
           </p>
         )}
       </div>
@@ -197,11 +197,11 @@ export function ConfirmStep({ booking, onBack, onComplete }: ConfirmStepProps) {
               </p>
               <div className="flex gap-3 flex-wrap">
                 <ChannelButton
-                  active={reminderChannel === "whatsapp"}
-                  onClick={() => setReminderChannel("whatsapp")}
-                  icon={<MessageCircle size={14} />}
-                  label="WhatsApp"
-                  sub="Send to my number"
+                  active={reminderChannel === "sms"}
+                  onClick={() => setReminderChannel("sms")}
+                  icon={<Smartphone size={14} />}
+                  label="SMS"
+                  sub="Text my number"
                 />
                 <ChannelButton
                   active={reminderChannel === "email"}
@@ -222,8 +222,8 @@ export function ConfirmStep({ booking, onBack, onComplete }: ConfirmStepProps) {
       {/* Single contact channel info */}
       {!hasBoth && effectiveChannel && (
         <div className="mb-5 flex items-center gap-2 text-[11px] text-[#0a0a0a]/50">
-          {effectiveChannel === "whatsapp"
-            ? <><MessageCircle size={12} className="text-[#25D366]" /> Reminders will be sent via <strong>WhatsApp</strong></>
+          {effectiveChannel === "sms"
+            ? <><Smartphone size={12} className="text-[#d4af37]" /> Reminders will be sent via <strong>SMS</strong></>
             : <><Mail size={12} className="text-[#b22222]" /> Reminders will be sent via <strong>email</strong></>
           }
           <span className="ml-1 text-[#0a0a0a]/35">— confirmation now, morning of, and 6h before.</span>

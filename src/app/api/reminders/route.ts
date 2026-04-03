@@ -12,8 +12,8 @@ import { addHours } from "date-fns";
  *  2. MORNING REMINDER   — appointments starting today, >6.5 h from now,
  *                          and the current Ghana time is 06:30 – 09:00
  *
- * The reminder channel ("whatsapp" | "email") is stored in the appointment's
- * notes field as a prefix:  [meta:channel=whatsapp] ...user note...
+ * The reminder channel ("sms" | "email", legacy "whatsapp" = sms) is stored in
+ * the appointment notes as: [meta:channel=sms] ...user note...
  */
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -85,10 +85,12 @@ export async function POST(req: NextRequest) {
 
 // ── Parse channel from notes field ───────────────────────────────────────────
 
-function parseChannel(notes: string | null): "whatsapp" | "email" {
+function parseChannel(notes: string | null): "sms" | "email" {
   if (!notes) return "email";
   const match = notes.match(/\[meta:channel=(\w+)\]/);
-  return (match?.[1] === "whatsapp") ? "whatsapp" : "email";
+  const ch = match?.[1];
+  if (ch === "sms" || ch === "whatsapp") return "sms";
+  return "email";
 }
 
 // ── Send a reminder via the customer's chosen channel ────────────────────────
@@ -111,8 +113,8 @@ async function sendReminder(
   const serviceName = service?.name ?? "your appointment";
   const customerName = customer.full_name;
 
-  const sixHMsg     = `Hi ${customerName}! ⏰ Just a reminder — your *${serviceName}* appointment at *Queen Verene* is in 6 hours (${apptDate}). We look forward to seeing you! 💛`;
-  const morningMsg  = `Good morning, ${customerName}! 🌅 Your *${serviceName}* appointment at *Queen Verene* is *today* at *${apptDate}*. Please arrive 10 minutes early. See you soon! 💛`;
+  const sixHMsg    = `Hi ${customerName}! Reminder: your ${serviceName} appointment at Queen Verene is in 6 hours (${apptDate}). We look forward to seeing you!`;
+  const morningMsg = `Good morning ${customerName}! Your ${serviceName} appointment at Queen Verene is today at ${apptDate}. Please arrive 10 minutes early. See you soon!`;
   const message     = type === "sixhour" ? sixHMsg : morningMsg;
 
   const subjectMap = {
@@ -120,8 +122,8 @@ async function sendReminder(
     morning: `🌅 Today's Your Appointment at Verene!`,
   };
 
-  if (channel === "whatsapp" && customer.phone) {
-    await sendWhatsApp(customer.phone, message);
+  if (channel === "sms" && customer.phone) {
+    await sendReminderSms(customer.phone, message);
   } else if (channel === "email" && customer.email) {
     await sendReminderEmail({
       to:          customer.email,
@@ -134,11 +136,11 @@ async function sendReminder(
   }
 }
 
-// ── WhatsApp via Meta Business Cloud API ─────────────────────────────────────
+// ── Hubtel SMS ───────────────────────────────────────────────────────────────
 
-async function sendWhatsApp(rawPhone: string, message: string) {
-  const { sendWhatsAppText } = await import("@/lib/whatsapp");
-  await sendWhatsAppText(rawPhone, message);
+async function sendReminderSms(rawPhone: string, message: string) {
+  const { sendHubtelSms } = await import("@/lib/hubtelSms");
+  await sendHubtelSms(rawPhone, message);
 }
 
 // ── Email reminder via Resend ─────────────────────────────────────────────────

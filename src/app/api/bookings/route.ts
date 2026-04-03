@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       customerName,
       customerPhone,
       customerEmail,
-      reminderChannel, // "whatsapp" | "email"
+      reminderChannel, // "sms" | "email" (legacy "whatsapp" treated as "sms")
     } = body;
 
     if (!serviceId || !date || !time || !customerName) {
@@ -48,9 +48,13 @@ export async function POST(req: NextRequest) {
     const startTime = new Date(`${date}T${time}:00`);
     const endTime   = addMinutes(startTime, serviceDuration || 60);
 
-    // Encode reminder metadata into notes field
-    // Format: [meta:channel=whatsapp] User notes here
-    const channel = reminderChannel ?? (customerPhone ? "whatsapp" : "email");
+    // Encode reminder metadata into notes field — [meta:channel=sms|email]
+    const hasPhone = Boolean(customerPhone?.trim());
+    const hasEmail = Boolean(customerEmail?.trim());
+    const raw = (reminderChannel as string | undefined) ?? (hasPhone ? "sms" : "email");
+    const normalized = raw === "whatsapp" ? "sms" : raw;
+    const channel: "sms" | "email" =
+      hasPhone && hasEmail ? (normalized === "email" ? "email" : "sms") : hasPhone ? "sms" : "email";
     const metaPrefix = `[meta:channel=${channel}] `;
     const notesWithMeta = metaPrefix + (notes || "");
 
@@ -90,8 +94,8 @@ export async function POST(req: NextRequest) {
     });
 
     // Send immediate booking-received message via chosen channel (fire-and-forget)
-    if (channel === "whatsapp" && customerPhone) {
-      sendWhatsApp({
+    if (channel === "sms" && customerPhone) {
+      sendBookingSms({
         customerName,
         customerPhone: formatPhone(customerPhone),
         appointment,
@@ -145,37 +149,23 @@ async function initiateHubtelPayment({
   return data?.data?.checkoutUrl || null;
 }
 
-// ── WhatsApp via Meta Business Cloud API ─────────────────────────────────────
+// ── Hubtel SMS (booking received) ─────────────────────────────────────────────
 
-async function sendWhatsApp({
+async function sendBookingSms({
   customerName, customerPhone, appointment, serviceName,
 }: {
   customerName: string; customerPhone: string;
   appointment: { start_time: string; id: string }; serviceName: string;
 }) {
-  const apiToken      = process.env.WHATSAPP_API_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  if (!apiToken || !phoneNumberId || apiToken === "your_whatsapp_api_token") return;
-
   const date = new Date(appointment.start_time).toLocaleString("en-GH", {
     weekday: "long", year: "numeric", month: "long",
     day: "numeric", hour: "2-digit", minute: "2-digit",
   });
 
-  const normalized = customerPhone.replace(/^\+/, "").replace(/^0/, "233");
-  const message = `Hi ${customerName}! 🌟 Your *Queen Verene* booking for *${serviceName}* on *${date}* has been received.\n\nPlease complete your GHS 50 deposit to confirm your slot. You'll receive a reminder the morning of your appointment and 6 hours before. We can't wait to pamper you! 💛\n\n_Queen Verene Beauty Studio, Accra_`;
+  const message = `Hi ${customerName}! Your Queen Verene booking for ${serviceName} on ${date} has been received. Complete your GHS 50 deposit to confirm. You'll get SMS reminders on the morning of your appointment and 6 hours before. Queen Verene Beauty Studio, Accra.`;
 
-  const res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiToken}` },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to:   normalized,
-      type: "text",
-      text: { body: message },
-    }),
-  });
-  if (!res.ok) console.error("[WhatsApp API]", await res.text());
+  const { sendHubtelSms } = await import("@/lib/hubtelSms");
+  await sendHubtelSms(customerPhone, message);
 }
 
 // ── Email: booking received (before payment) ──────────────────────────────────
