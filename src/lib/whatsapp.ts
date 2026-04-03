@@ -7,7 +7,7 @@
  *    - "Business" app type → Add "WhatsApp" product
  *
  * 2. In "WhatsApp → API Setup":
- *    - Add your phone number (+233539523961) as a test/production number
+ *    - Add your WhatsApp Business number (same as NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER) as a test/production number
  *    - Copy the "Phone number ID"  → WHATSAPP_PHONE_NUMBER_ID in .env.local
  *
  * 3. Generate a Permanent System User access token:

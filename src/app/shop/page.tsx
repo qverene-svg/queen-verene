@@ -5,6 +5,7 @@ import { Search, MessageCircle } from "lucide-react";
 import { FloatingPageNav } from "@/components/layout/FloatingPageNav";
 import { Badge } from "@/components/ui/Badge";
 import { formatCurrency } from "@/lib/utils";
+import { WHATSAPP_BUSINESS_NUMBER, waMeDigits } from "@/lib/contact";
 import { createClient } from "@/lib/supabase/client";
 
 interface Product {
@@ -46,11 +47,10 @@ export default function ShopPage() {
   );
 
   const inquire = (product: Product) => {
-    const wa  = process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER || "+233000000000";
     const msg = encodeURIComponent(
       `Hi Verene! I'm interested in: *${product.name}* (SKU: ${product.sku}) — ${formatCurrency(product.price)}.`
     );
-    window.open(`https://wa.me/${wa.replace(/\D/g, "")}?text=${msg}`, "_blank");
+    window.open(`https://wa.me/${waMeDigits(WHATSAPP_BUSINESS_NUMBER)}?text=${msg}`, "_blank");
   };
 
   return (

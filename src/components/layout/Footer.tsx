@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Phone, Mail, MapPin } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-
-const PRIMARY_PHONE  = "+233539523961";
-const SECONDARY_PHONE = "+233269892224";
+import {
+  WHATSAPP_BUSINESS_NUMBER,
+  SECONDARY_CALL_NUMBER,
+  formatGhanaPhoneDisplay,
+} from "@/lib/contact";
 
 const footerLinks = {
   Services: [
@@ -110,19 +112,19 @@ export function Footer() {
               <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
                 <Phone size={13} style={{ flexShrink: 0, color: "#b22222" }} />
                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                  <a href={`tel:${PRIMARY_PHONE}`}
+                  <a href={`tel:${WHATSAPP_BUSINESS_NUMBER}`}
                     style={{ color: "rgba(255,255,255,0.45)", textDecoration: "none", transition: "color 0.18s" }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#fff"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)"; }}
                   >
-                    +233 53 952 3961
+                    {formatGhanaPhoneDisplay(WHATSAPP_BUSINESS_NUMBER)}
                   </a>
-                  <a href={`tel:${SECONDARY_PHONE}`}
+                  <a href={`tel:${SECONDARY_CALL_NUMBER}`}
                     style={{ color: "rgba(255,255,255,0.35)", textDecoration: "none", fontSize: 12, transition: "color 0.18s" }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#fff"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.35)"; }}
                   >
-                    +233 26 989 2224
+                    {formatGhanaPhoneDisplay(SECONDARY_CALL_NUMBER)}
                   </a>
                 </div>
               </li>

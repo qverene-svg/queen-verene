@@ -2,10 +2,12 @@
 
 import { motion } from "framer-motion";
 
+import { WHATSAPP_BUSINESS_NUMBER, formatGhanaPhoneDisplay, waMeDigits } from "@/lib/contact";
+
 const INSTAGRAM_URL = "https://www.instagram.com/Queenverene_beauty/";
 const TIKTOK_URL    = "https://www.tiktok.com/@Queen.Verene";
 const FACEBOOK_URL  = "https://www.facebook.com/Queen-Verene-Hair";
-const WHATSAPP_URL  = "https://wa.me/233539523961";
+const WHATSAPP_URL  = `https://wa.me/${waMeDigits(WHATSAPP_BUSINESS_NUMBER)}`;
 
 function InstagramIcon({ size = 20 }: { size?: number }) {
   return (
@@ -68,7 +70,7 @@ const SOCIALS = [
   },
   {
     label:   "WhatsApp",
-    handle:  "+233 53 952 3961",
+    handle:  formatGhanaPhoneDisplay(WHATSAPP_BUSINESS_NUMBER),
     href:    WHATSAPP_URL,
     Icon:    WhatsAppIcon,
     grad:    "linear-gradient(135deg,#128C7E,#25D366)",
