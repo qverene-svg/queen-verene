@@ -25,8 +25,8 @@ export default function ServicesPage() {
           <p className="text-[#d4af37] text-xs font-semibold tracking-[0.4em] uppercase mb-4">
             Queen Verene Hair
           </p>
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl text-white leading-tight mb-6 font-extrabold tracking-tight"
-            style={{ fontFamily: "var(--font-outfit), sans-serif" }}>
+          <h1 className="text-white leading-tight mb-6 font-extrabold tracking-tight"
+            style={{ fontFamily: "var(--font-outfit), sans-serif", fontSize: "clamp(2.5rem, 8vw, 4.5rem)" }}>
             Our Services
           </h1>
           <p className="text-white/50 max-w-xl mx-auto text-base leading-relaxed">

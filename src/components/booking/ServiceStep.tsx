@@ -97,8 +97,13 @@ export function ServiceStep({
         ))}
       </div>
 
-      {/* Service cards — 4-column horizontal strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+      {/* Service cards — responsive grid */}
+      <style>{`
+        .svc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        @media (min-width: 640px) { .svc-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; } }
+        @media (min-width: 1024px) { .svc-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; } }
+      `}</style>
+      <div className="svc-grid">
         {filtered.map((service) => {
           const isSelected = picked === service.id;
           return (

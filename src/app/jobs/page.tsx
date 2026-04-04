@@ -104,6 +104,19 @@ export default function JobsPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: "var(--font-montserrat),sans-serif" }}>
+      <style>{`
+        .jobs-hero-inner { padding: 48px 20px 64px; }
+        @media (min-width: 640px) { .jobs-hero-inner { padding: 72px 40px 80px; } }
+        .jobs-pillars-wrap { padding: 56px 20px 0; }
+        @media (min-width: 640px) { .jobs-pillars-wrap { padding: 72px 40px 0; } }
+        .pillars-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 56px; }
+        @media (min-width: 640px) { .pillars-grid { grid-template-columns: repeat(3, 1fr); gap: 2px; margin-bottom: 80px; } }
+        .jobs-openings-wrap { padding: 48px 20px 64px; }
+        @media (min-width: 640px) { .jobs-openings-wrap { padding: 72px 40px 80px; } }
+        .jobs-quote-wrap { padding: 56px 20px; }
+        @media (min-width: 640px) { .jobs-quote-wrap { padding: 72px 40px; } }
+        .job-meta-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+      `}</style>
 
       {/* ── Dark header — pt-16 clears fixed navbar ── */}
       <div style={{ background: "#0a0a0a", paddingTop: 64, position: "relative", overflow: "hidden" }}>
@@ -112,7 +125,7 @@ export default function JobsPage() {
         <FloatingPageNav />
 
         {/* ── Hero ── */}
-        <div style={{ maxWidth: 900, margin: "0 auto", padding: "72px 40px 80px", textAlign: "center", position: "relative", zIndex: 1 }}>
+        <div className="jobs-hero-inner" style={{ maxWidth: 900, margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
           {/* Ornament */}
           <motion.div
             initial={{ opacity: 0, scaleX: 0 }}
@@ -170,7 +183,7 @@ export default function JobsPage() {
       <div style={{ background: "#f9f7f2", color: "#0a0a0a" }}>
 
         {/* ── Pillars ── */}
-        <div style={{ maxWidth: 1000, margin: "0 auto", padding: "72px 40px 0" }}>
+        <div className="jobs-pillars-wrap" style={{ maxWidth: 1000, margin: "0 auto" }}>
 
           {/* Section label */}
           <motion.div
@@ -188,8 +201,8 @@ export default function JobsPage() {
             <div style={{ width: 40, height: 1, background: "#d4af37", margin: "18px auto 0" }} />
           </motion.div>
 
-          {/* 3-pillar row */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, marginBottom: 80 }}>
+          {/* 3-pillar row — stacks on mobile */}
+          <div className="pillars-grid">
             {PILLARS.map((p, i) => (
               <motion.div
                 key={p.roman}
@@ -221,7 +234,7 @@ export default function JobsPage() {
         </div>
 
         {/* ── Open Positions ── */}
-        <div style={{ background: "#0a0a0a", padding: "72px 40px 80px" }}>
+        <div className="jobs-openings-wrap" style={{ background: "#0a0a0a" }}>
           <div style={{ maxWidth: 820, margin: "0 auto" }}>
 
             {/* Section header */}
@@ -265,7 +278,7 @@ export default function JobsPage() {
                   >
                     <div style={{ flex: 1 }}>
                       {/* Meta */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 14 }}>
+                      <div className="job-meta-row">
                         {job.type && (
                           <span style={{
                             fontSize: 9, fontWeight: 700, letterSpacing: "0.28em", textTransform: "uppercase",
@@ -334,7 +347,7 @@ export default function JobsPage() {
         </div>
 
         {/* ── Closing quote ── */}
-        <div style={{ background: "#f9f7f2", padding: "72px 40px", textAlign: "center" }}>
+        <div className="jobs-quote-wrap" style={{ background: "#f9f7f2", textAlign: "center" }}>
           <div style={{ maxWidth: 560, margin: "0 auto" }}>
             <div style={{ width: 1, height: 48, background: "linear-gradient(to bottom, #d4af37, transparent)", margin: "0 auto 32px" }} />
             <p style={{

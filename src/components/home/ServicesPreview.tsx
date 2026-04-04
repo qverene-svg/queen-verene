@@ -32,8 +32,14 @@ const services = [
 
 export function ServicesPreview() {
   return (
-    <section style={{ padding: "56px 40px", background: "#f9f7f2" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+    <section style={{ background: "#f9f7f2" }}>
+      <style>{`
+        .sp-section { padding: 56px 20px; }
+        @media (min-width: 640px) { .sp-section { padding: 56px 40px; } }
+        .sp-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        @media (min-width: 640px) { .sp-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
+      `}</style>
+      <div className="sp-section" style={{ maxWidth: 1100, margin: "0 auto" }}>
 
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 40 }}>
@@ -57,8 +63,8 @@ export function ServicesPreview() {
           </motion.h2>
         </div>
 
-        {/* 4-column horizontal strip */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+        {/* 4-column horizontal strip — 2-col on mobile */}
+        <div className="sp-grid">
           {services.map((service, i) => (
             <motion.div
               key={service.title}

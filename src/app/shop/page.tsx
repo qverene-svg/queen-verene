@@ -59,8 +59,8 @@ export default function ShopPage() {
         <FloatingPageNav />
         <div className="py-10">
         <p className="text-[#d4af37] text-[10px] font-semibold tracking-[0.35em] uppercase mb-3">Our Collection</p>
-        <h1 className="text-4xl sm:text-5xl text-white font-extrabold tracking-tight"
-          style={{ fontFamily: "var(--font-outfit), sans-serif" }}>The Verene Shop</h1>
+        <h1 className="text-white font-extrabold tracking-tight"
+          style={{ fontFamily: "var(--font-outfit), sans-serif", fontSize: "clamp(2rem, 8vw, 3.5rem)" }}>The Verene Shop</h1>
         <p className="text-white/40 mt-3 max-w-sm mx-auto text-sm leading-relaxed">
           Premium hair extensions, wigs, and care products.
         </p>
@@ -70,9 +70,15 @@ export default function ShopPage() {
       <div className="max-w-6xl mx-auto px-6 py-12">
 
         {/* ── Filters ─────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-10 pb-6 border-b border-black/8">
+        <style>{`
+          .shop-filters { display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 1px solid rgba(0,0,0,0.08); }
+          @media (min-width: 640px) { .shop-filters { flex-direction: row; align-items: center; gap: 16px; } }
+          .shop-search { width: 100%; }
+          @media (min-width: 640px) { .shop-search { width: 260px; flex-shrink: 0; } }
+        `}</style>
+        <div className="shop-filters">
           {/* Search */}
-          <div className="relative w-full sm:w-64">
+          <div className="shop-search" style={{ position: "relative" }}>
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0a0a0a]/30" />
             <input
               value={search}
@@ -100,13 +106,18 @@ export default function ShopPage() {
           </div>
 
           {/* Count */}
-          <p className="ml-auto text-[10px] text-[#0a0a0a]/35 font-medium tracking-wide whitespace-nowrap hidden sm:block">
+          <p style={{ marginLeft: "auto", fontSize: 10, color: "rgba(10,10,10,0.35)", fontWeight: 500, letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
             {filtered.length} {filtered.length === 1 ? "item" : "items"}
           </p>
         </div>
 
-        {/* ── Product grid — 4 columns, desktop ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18 }}>
+        {/* ── Product grid — responsive ── */}
+        <style>{`
+          .shop-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+          @media (min-width: 640px) { .shop-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
+          @media (min-width: 1024px) { .shop-grid { grid-template-columns: repeat(4, 1fr); gap: 18px; } }
+        `}</style>
+        <div className="shop-grid">
           {filtered.map((product, i) => (
             <motion.div
               key={product.id}
