@@ -55,7 +55,7 @@ export default function ShopPage() {
     <div className="min-h-screen bg-[#f9f7f2]">
 
       {/* ── Header ──────────────────────────────────────── */}
-      <div className="bg-[#0a0a0a] px-6 text-center">
+      <div className="bg-[#0a0a0a] px-6 text-center pt-16">
         <FloatingPageNav />
         <div className="py-10">
         <p className="text-[#d4af37] text-[10px] font-semibold tracking-[0.35em] uppercase mb-3">Our Collection</p>
@@ -105,40 +105,55 @@ export default function ShopPage() {
           </p>
         </div>
 
-        {/* ── Product grid — 2-col mobile → 4-col desktop ── */}
-        <style>{`
-          .shop-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-          }
-          @media (min-width: 640px)  { .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; } }
-          @media (min-width: 900px)  { .shop-grid { grid-template-columns: repeat(3, 1fr); } }
-          @media (min-width: 1200px) { .shop-grid { grid-template-columns: repeat(4, 1fr); } }
-        `}</style>
-        <div className="shop-grid">
+        {/* ── Product grid — 4 columns, desktop ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18 }}>
           {filtered.map((product, i) => (
             <motion.div
               key={product.id}
-              initial={{ opacity: 0, y: 14 }}
+              initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.04 }}
-              className="group"
-              style={{ background: "#fff", borderRadius: 10, overflow: "hidden", border: "1px solid rgba(0,0,0,0.06)", transition: "box-shadow 0.2s, border-color 0.2s" }}
+              transition={{ delay: i * 0.05 }}
+              style={{
+                background: "#fff", borderRadius: 14, overflow: "hidden",
+                border: "1px solid rgba(0,0,0,0.07)",
+                boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+                transition: "box-shadow 0.25s, transform 0.25s",
+                display: "flex", flexDirection: "column",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 32px rgba(0,0,0,0.12)";
+                (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 10px rgba(0,0,0,0.05)";
+                (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+              }}
             >
-              {/* Image */}
-              <div style={{ position: "relative", aspectRatio: "4/3", overflow: "hidden", background: "#f5f5f5" }}>
+              {/* Image — square with nice overlay */}
+              <div style={{ position: "relative", aspectRatio: "1/1", overflow: "hidden", background: "#f0eeeb", flexShrink: 0 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={product.image_urls[0]}
                   alt={product.name}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s" }}
-                  className="group-hover:scale-105"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.55s ease" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLImageElement).style.transform = "scale(1.08)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLImageElement).style.transform = "scale(1)"; }}
                 />
+                {/* Subtle bottom gradient */}
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "40%", background: "linear-gradient(to top, rgba(0,0,0,0.28) 0%, transparent 100%)", pointerEvents: "none" }} />
+                {/* Category badge */}
+                <span style={{
+                  position: "absolute", top: 10, left: 10,
+                  background: "rgba(10,10,10,0.7)", backdropFilter: "blur(6px)",
+                  color: "#fff", fontSize: 8, fontWeight: 700, letterSpacing: "0.18em",
+                  textTransform: "uppercase", padding: "3px 9px", borderRadius: 999,
+                }}>
+                  {product.category}
+                </span>
                 {!product.is_available && (
-                  <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ color: "#fff", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", background: "rgba(0,0,0,0.6)", padding: "3px 10px", borderRadius: 999 }}>
+                  <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" }}>
+                    <span style={{ color: "#fff", fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", background: "rgba(0,0,0,0.65)", padding: "5px 14px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.2)" }}>
                       Out of Stock
                     </span>
                   </div>
@@ -146,30 +161,39 @@ export default function ShopPage() {
               </div>
 
               {/* Info */}
-              <div style={{ padding: "12px 14px 14px" }}>
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#b22222", margin: "0 0 4px" }}>{product.category}</p>
-                <h3 style={{ fontSize: 13, fontWeight: 700, color: "#0a0a0a", margin: "0 0 5px", lineHeight: 1.3,
+              <div style={{ padding: "14px 15px 15px", flex: 1, display: "flex", flexDirection: "column" }}>
+                <h3 style={{
+                  fontSize: 12, fontWeight: 700, color: "#0a0a0a", margin: "0 0 5px", lineHeight: 1.35,
                   fontFamily: "var(--font-outfit),sans-serif",
-                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                }}>
                   {product.name}
                 </h3>
-                <p style={{ fontSize: 12, color: "rgba(10,10,10,0.45)", margin: "0 0 12px", lineHeight: 1.5,
-                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                <p style={{
+                  fontSize: 10, color: "rgba(10,10,10,0.42)", margin: "0 0 12px", lineHeight: 1.55, flex: 1,
+                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                }}>
                   {product.description}
                 </p>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#0a0a0a" }}>{formatCurrency(product.price)}</span>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, paddingTop: 10, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: "#0a0a0a", letterSpacing: "-0.01em" }}>{formatCurrency(product.price)}</span>
                   {product.is_available ? (
                     <button
                       onClick={() => inquire(product)}
-                      style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 12px", background: "#0a0a0a", color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", borderRadius: 8, border: "none", cursor: "pointer", transition: "background 0.18s", minHeight: 36 }}
-                      className="hover:!bg-[#b22222]"
+                      style={{
+                        display: "flex", alignItems: "center", gap: 5, padding: "7px 12px",
+                        background: "#0a0a0a", color: "#fff", fontSize: 9, fontWeight: 700,
+                        letterSpacing: "0.12em", textTransform: "uppercase",
+                        borderRadius: 8, border: "none", cursor: "pointer", transition: "background 0.18s",
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#b22222"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#0a0a0a"; }}
                     >
-                      <MessageCircle size={12} />
+                      <MessageCircle size={10} />
                       Enquire
                     </button>
                   ) : (
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase", color: "rgba(10,10,10,0.25)" }}>Unavailable</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(10,10,10,0.22)" }}>Unavailable</span>
                   )}
                 </div>
               </div>

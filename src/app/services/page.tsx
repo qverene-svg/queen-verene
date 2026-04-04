@@ -12,7 +12,7 @@ export default function ServicesPage() {
       <ServicesHashScroll />
 
       {/* ── Floating Nav ─────────────────────────────────── */}
-      <div className="bg-[#0a0a0a]">
+      <div className="bg-[#0a0a0a] pt-16">
         <FloatingPageNav />
       </div>
 

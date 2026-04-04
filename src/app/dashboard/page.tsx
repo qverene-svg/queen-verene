@@ -122,7 +122,7 @@ function DashboardInner() {
     <div className="min-h-screen bg-[#f9f7f2]">
 
       {/* ── Floating Nav ── */}
-      <div className="bg-[#0a0a0a]">
+      <div className="bg-[#0a0a0a] pt-16">
         <FloatingPageNav />
       </div>
 

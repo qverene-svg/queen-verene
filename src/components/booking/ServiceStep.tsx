@@ -97,23 +97,25 @@ export function ServiceStep({
         ))}
       </div>
 
-      {/* Service cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Service cards — 4-column horizontal strip */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
         {filtered.map((service) => {
           const isSelected = picked === service.id;
           return (
             <button
               key={service.id}
               onClick={() => setPicked(service.id)}
-              className={cn(
-                "group text-left rounded-2xl overflow-hidden border-2 transition-all duration-300",
-                isSelected
-                  ? "border-[#b22222] shadow-lg shadow-[#b22222]/10"
-                  : "border-black/8 bg-white hover:border-black/20 hover:shadow-md"
-              )}
+              style={{
+                textAlign: "left", background: "#fff", borderRadius: 12, overflow: "hidden", padding: 0,
+                border: `2px solid ${isSelected ? "#b22222" : "rgba(0,0,0,0.07)"}`,
+                boxShadow: isSelected ? "0 4px 20px rgba(178,34,34,0.15)" : "0 1px 4px rgba(0,0,0,0.05)",
+                cursor: "pointer", transition: "border-color 0.2s, box-shadow 0.2s, transform 0.2s",
+              }}
+              onMouseEnter={(e) => { if (!isSelected) { (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,0,0,0.18)"; (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 6px 18px rgba(0,0,0,0.1)"; } }}
+              onMouseLeave={(e) => { if (!isSelected) { (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,0,0,0.07)"; (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 4px rgba(0,0,0,0.05)"; } }}
             >
-              {/* Image strip */}
-              <div className="relative h-36 overflow-hidden">
+              {/* Image — portrait 4/5 */}
+              <div style={{ position: "relative", aspectRatio: "4/5", overflow: "hidden", background: "#f0eeeb" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={
@@ -122,33 +124,58 @@ export function ServiceStep({
                     CATEGORY_IMAGES.styling
                   }
                   alt={service.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLImageElement).style.transform = "scale(1.06)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLImageElement).style.transform = "scale(1)"; }}
                 />
-                <div className={cn(
-                  "absolute inset-0 transition-all duration-300",
-                  isSelected ? "bg-[#b22222]/20" : "bg-black/20 group-hover:bg-black/10"
-                )} />
+                {/* Gradient overlay */}
+                <div style={{
+                  position: "absolute", inset: 0,
+                  background: isSelected
+                    ? "linear-gradient(to top, rgba(178,34,34,0.55) 0%, rgba(178,34,34,0.08) 55%, transparent 100%)"
+                    : "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.08) 55%, transparent 100%)",
+                  transition: "background 0.2s",
+                }} />
+                {/* Selected checkmark */}
                 {isSelected && (
-                  <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[#b22222] flex items-center justify-center">
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  <div style={{ position: "absolute", top: 10, right: 10, width: 24, height: 24, borderRadius: "50%", background: "#b22222", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
                 )}
-                <span className="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-[10px] font-semibold tracking-widest uppercase px-2.5 py-1 rounded-full">
+                {/* Category label */}
+                <span style={{
+                  position: "absolute", bottom: 10, left: 10,
+                  background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
+                  color: "#fff", fontSize: 8, fontWeight: 700, letterSpacing: "0.18em",
+                  textTransform: "uppercase", padding: "3px 8px", borderRadius: 999,
+                }}>
                   {CATEGORY_LABELS[service.category] || service.category}
                 </span>
               </div>
 
               {/* Content */}
-              <div className="p-4 bg-white">
-                <h3 className="text-sm font-semibold text-[#0a0a0a] leading-snug mb-1"
-                  style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 700 }}>{service.name}</h3>
-                <p className="text-[11px] text-[#0a0a0a]/40 leading-relaxed mb-3 line-clamp-2">{service.description}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-base font-semibold text-[#0a0a0a]">{formatCurrency(service.price)}</span>
-                  <span className="flex items-center gap-1 text-[10px] text-[#0a0a0a]/35 tracking-wide">
-                    <Clock size={10} /> {service.duration_minutes} min
+              <div style={{ padding: "10px 12px 12px", background: "#fff" }}>
+                <h3 style={{
+                  fontSize: 12, fontWeight: 700, color: "#0a0a0a", margin: "0 0 4px", lineHeight: 1.3,
+                  fontFamily: "var(--font-outfit),sans-serif",
+                  display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden",
+                }}>
+                  {service.name}
+                </h3>
+                <p style={{
+                  fontSize: 10, color: "rgba(10,10,10,0.4)", margin: "0 0 8px", lineHeight: 1.5,
+                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                }}>
+                  {service.description}
+                </p>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: isSelected ? "#b22222" : "#0a0a0a" }}>
+                    {formatCurrency(service.price)}
+                  </span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 9, color: "rgba(10,10,10,0.35)", letterSpacing: "0.04em" }}>
+                    <Clock size={9} /> {service.duration_minutes} min
                   </span>
                 </div>
               </div>

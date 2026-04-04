@@ -7,6 +7,7 @@ import {
   Users, Calendar, TrendingUp, DollarSign, Package, Briefcase,
   LogOut, Scissors, LayoutDashboard, Eye, EyeOff, Search, Bell,
   Menu, X, ExternalLink, TrendingDown, ShoppingCart,
+  Pencil, Trash2, Check, XCircle,
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { createClient } from "@/lib/supabase/client";
@@ -49,6 +50,9 @@ const DEMO_APPOINTMENTS = [
 
 type Screen  = "login" | "checking" | "dashboard";
 type NavItem = "Overview" | "Services" | "Shop" | "Careers";
+
+type Appointment = typeof DEMO_APPOINTMENTS[number] & { serviceName: string; client: string; time: string; status: string; amount: number };
+type EditingAppt = { id: string; serviceName: string; client: string; time: string; status: string; amount: number };
 
 const ALLOWED_ROLES = new Set(["admin", "manager", "staff"]);
 function isAllowedStaffRole(role?: string | null) {
@@ -135,6 +139,10 @@ export default function AdminPage() {
   const [activeNav, setActiveNav] = useState<NavItem>("Overview");
   const [sideOpen,  setSideOpen]  = useState(false);
   const [search,    setSearch]    = useState("");
+  const [appointments, setAppointments] = useState(DEMO_APPOINTMENTS);
+  const [editingId,    setEditingId]    = useState<string | null>(null);
+  const [editDraft,    setEditDraft]    = useState<EditingAppt | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const canManage = role === "admin" || role === "manager";
 
@@ -539,30 +547,135 @@ export default function AdminPage() {
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                           <thead>
                             <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                              {["ID", "Service", "Client", "Date & Time", "Status", "Amount"].map((h) => (
+                              {["ID", "Service", "Client", "Date & Time", "Status", "Amount", "Actions"].map((h) => (
                                 <th key={h} style={{ padding: "12px 20px", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)", whiteSpace: "nowrap" }}>{h}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody>
-                            {DEMO_APPOINTMENTS.map((appt, i) => (
-                              <motion.tr key={appt.id}
-                                initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.48 + i * 0.05 }}
-                                style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.15s" }}
-                                className="hover:bg-white/[0.02]"
-                              >
-                                <td style={{ padding: "14px 20px", fontFamily: "monospace", fontSize: 11, color: "rgba(255,255,255,0.28)", whiteSpace: "nowrap" }}>{appt.id}</td>
-                                <td style={{ padding: "14px 20px", fontWeight: 600, color: "#fff", whiteSpace: "nowrap" }}>{appt.serviceName}</td>
-                                <td style={{ padding: "14px 20px", color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>{appt.client}</td>
-                                <td style={{ padding: "14px 20px", color: "rgba(255,255,255,0.38)", fontSize: 12, whiteSpace: "nowrap" }}>
-                                  {format(new Date(appt.time), "MMM d · h:mm a")}
-                                </td>
-                                <td style={{ padding: "14px 20px" }}>
-                                  <StatusPill status={appt.status} />
-                                </td>
-                                <td style={{ padding: "14px 20px", fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>{formatCurrency(appt.amount)}</td>
-                              </motion.tr>
-                            ))}
+                            {appointments.filter(a =>
+                              !search || a.client.toLowerCase().includes(search.toLowerCase()) || a.serviceName.toLowerCase().includes(search.toLowerCase())
+                            ).map((appt, i) => {
+                              const isEditing = editingId === appt.id;
+                              const isDeleteConfirm = deleteConfirmId === appt.id;
+                              const inlineInput = (val: string, field: keyof EditingAppt, type = "text") => (
+                                <input
+                                  type={type}
+                                  value={val}
+                                  onChange={(e) => setEditDraft((d) => d ? { ...d, [field]: e.target.value } : d)}
+                                  style={{
+                                    background: "rgba(255,255,255,0.07)", border: "1px solid rgba(212,175,55,0.4)",
+                                    borderRadius: 6, color: "#fff", fontSize: 12, padding: "4px 8px",
+                                    outline: "none", width: "100%", minWidth: 80,
+                                  }}
+                                />
+                              );
+                              return (
+                                <motion.tr key={appt.id}
+                                  initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.48 + i * 0.05 }}
+                                  style={{
+                                    borderBottom: "1px solid rgba(255,255,255,0.04)",
+                                    background: isEditing ? "rgba(212,175,55,0.04)" : isDeleteConfirm ? "rgba(248,113,113,0.05)" : "transparent",
+                                    transition: "background 0.15s",
+                                  }}
+                                >
+                                  <td style={{ padding: "12px 20px", fontFamily: "monospace", fontSize: 11, color: "rgba(255,255,255,0.28)", whiteSpace: "nowrap" }}>{appt.id}</td>
+
+                                  {/* Service */}
+                                  <td style={{ padding: "12px 20px", fontWeight: 600, color: "#fff", whiteSpace: "nowrap", maxWidth: 160 }}>
+                                    {isEditing && editDraft ? inlineInput(editDraft.serviceName, "serviceName") : appt.serviceName}
+                                  </td>
+
+                                  {/* Client */}
+                                  <td style={{ padding: "12px 20px", color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>
+                                    {isEditing && editDraft ? inlineInput(editDraft.client, "client") : appt.client}
+                                  </td>
+
+                                  {/* Date */}
+                                  <td style={{ padding: "12px 20px", color: "rgba(255,255,255,0.38)", fontSize: 12, whiteSpace: "nowrap" }}>
+                                    {isEditing && editDraft
+                                      ? inlineInput(editDraft.time.slice(0, 16), "time", "datetime-local")
+                                      : format(new Date(appt.time), "MMM d · h:mm a")}
+                                  </td>
+
+                                  {/* Status */}
+                                  <td style={{ padding: "12px 20px" }}>
+                                    {isEditing && editDraft ? (
+                                      <select
+                                        value={editDraft.status}
+                                        onChange={(e) => setEditDraft((d) => d ? { ...d, status: e.target.value } : d)}
+                                        style={{ background: "#1a1a1e", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 6, color: "#fff", fontSize: 12, padding: "4px 8px", outline: "none" }}
+                                      >
+                                        {["confirmed","pending","cancelled","completed"].map((s) => <option key={s} value={s}>{s}</option>)}
+                                      </select>
+                                    ) : <StatusPill status={appt.status} />}
+                                  </td>
+
+                                  {/* Amount */}
+                                  <td style={{ padding: "12px 20px", fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>
+                                    {isEditing && editDraft
+                                      ? inlineInput(String(editDraft.amount), "amount", "number")
+                                      : formatCurrency(appt.amount)}
+                                  </td>
+
+                                  {/* Actions */}
+                                  <td style={{ padding: "12px 20px", whiteSpace: "nowrap" }}>
+                                    {isDeleteConfirm ? (
+                                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                        <span style={{ fontSize: 11, color: "#f87171", marginRight: 4 }}>Delete?</span>
+                                        <button
+                                          onClick={() => { setAppointments((a) => a.filter((x) => x.id !== appt.id)); setDeleteConfirmId(null); toast.success("Booking deleted."); }}
+                                          style={{ padding: "4px 10px", borderRadius: 6, background: "#b22222", border: "none", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                                          Yes
+                                        </button>
+                                        <button onClick={() => setDeleteConfirmId(null)}
+                                          style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(255,255,255,0.08)", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer" }}>
+                                          No
+                                        </button>
+                                      </div>
+                                    ) : isEditing ? (
+                                      <div style={{ display: "flex", gap: 6 }}>
+                                        <button
+                                          onClick={() => {
+                                            if (!editDraft) return;
+                                            setAppointments((a) => a.map((x) => x.id === appt.id ? { ...x, ...editDraft, amount: Number(editDraft.amount) } : x));
+                                            setEditingId(null); setEditDraft(null);
+                                            toast.success("Booking updated.");
+                                          }}
+                                          style={{ width: 30, height: 30, borderRadius: 7, background: "rgba(52,211,153,0.15)", border: "1px solid rgba(52,211,153,0.3)", color: "#34d399", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                                          <Check size={13} />
+                                        </button>
+                                        <button onClick={() => { setEditingId(null); setEditDraft(null); }}
+                                          style={{ width: 30, height: 30, borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                                          <XCircle size={13} />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div style={{ display: "flex", gap: 6 }}>
+                                        <button
+                                          onClick={() => { setEditingId(appt.id); setEditDraft({ ...appt }); }}
+                                          style={{ width: 30, height: 30, borderRadius: 7, background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.2)", color: "#d4af37", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.15s" }}
+                                          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(212,175,55,0.22)"; }}
+                                          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(212,175,55,0.1)"; }}
+                                          title="Edit booking"
+                                        >
+                                          <Pencil size={12} />
+                                        </button>
+                                        <button
+                                          onClick={() => setDeleteConfirmId(appt.id)}
+                                          style={{ width: 30, height: 30, borderRadius: 7, background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.18)", color: "#f87171", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.15s" }}
+                                          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(248,113,113,0.2)"; }}
+                                          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(248,113,113,0.08)"; }}
+                                          title="Delete booking"
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </td>
+                                </motion.tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>

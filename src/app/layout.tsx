@@ -33,10 +33,34 @@ export const metadata: Metadata = {
   description:
     "Book luxury beauty services — braiding, pedicure, manicure, wig making, makeup, and hair care. Ghana's premier beauty destination.",
   keywords: ["beauty salon accra", "braiding ghana", "luxury beauty", "wig making", "makeup artist ghana"],
+  icons: {
+    icon: [
+      { url: "/brand/queen-verene-logo.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/brand/queen-verene-logo.png", type: "image/png" },
+    ],
+    shortcut: "/brand/queen-verene-logo.png",
+  },
+  manifest: "/manifest.json",
   openGraph: {
     title: "Verene | Premium Beauty Studio",
     description: "Where Beauty Meets Elegance. Book your appointment today.",
     type: "website",
+    images: [
+      {
+        url: "/brand/queen-verene-logo.png",
+        width: 512,
+        height: 512,
+        alt: "Queen Verene Beauty Studio",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "Verene | Premium Beauty Studio",
+    description: "Where Beauty Meets Elegance. Book your appointment today.",
+    images: ["/brand/queen-verene-logo.png"],
   },
 };
 
