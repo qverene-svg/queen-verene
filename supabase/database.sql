@@ -180,13 +180,11 @@ CREATE INDEX IF NOT EXISTS idx_users_email                 ON public.users(email
 
 
 -- =============================================================================
--- 4. RLS HELPER FUNCTIONS
+-- 4. RLS HELPER FUNCTION
 -- =============================================================================
--- All functions use SECURITY DEFINER so they can read public.users without
--- triggering RLS recursion.  They are granted only to 'authenticated' and
--- revoked from the default PUBLIC role.
+-- SECURITY DEFINER bypasses RLS when this function reads public.users,
+-- preventing the infinite-recursion error on admin SELECT policies.
 
--- is_admin_or_manager() — used by most admin policies
 CREATE OR REPLACE FUNCTION public.is_admin_or_manager()
 RETURNS boolean
 LANGUAGE sql
@@ -201,44 +199,8 @@ AS $$
   );
 $$;
 
-REVOKE ALL    ON FUNCTION public.is_admin_or_manager() FROM PUBLIC;
+REVOKE ALL  ON FUNCTION public.is_admin_or_manager() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_admin_or_manager() TO authenticated;
-
--- is_admin() — used by admin-only policies (user management, etc.)
-CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-STABLE
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.users
-    WHERE id = auth.uid()
-      AND lower(trim(role)) = 'admin'
-  );
-$$;
-
-REVOKE ALL    ON FUNCTION public.is_admin() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
-
--- is_staff() — used by staff-level access policies
-CREATE OR REPLACE FUNCTION public.is_staff()
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-STABLE
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.users
-    WHERE id = auth.uid()
-      AND lower(trim(role)) IN ('admin', 'manager', 'staff', 'viewer')
-  );
-$$;
-
-REVOKE ALL    ON FUNCTION public.is_staff() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.is_staff() TO authenticated;
 
 
 -- =============================================================================
@@ -247,7 +209,6 @@ GRANT EXECUTE ON FUNCTION public.is_staff() TO authenticated;
 
 ALTER TABLE public.users             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.staff_profiles    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.staff_availability ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.appointments      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.product_inquiries ENABLE ROW LEVEL SECURITY;
@@ -257,88 +218,30 @@ ALTER TABLE public.applications      ENABLE ROW LEVEL SECURITY;
 
 -- ── users ────────────────────────────────────────────────────────────────────
 
-DROP POLICY IF EXISTS "Users can view own profile"          ON public.users;
-DROP POLICY IF EXISTS "Admins can view all users"           ON public.users;
-DROP POLICY IF EXISTS "Staff can view all users"            ON public.users;
-DROP POLICY IF EXISTS "Users can update own profile"        ON public.users;
-DROP POLICY IF EXISTS "Admins can update any user"          ON public.users;
-DROP POLICY IF EXISTS "Users can insert own profile"        ON public.users;
-DROP POLICY IF EXISTS "Admins can delete users"             ON public.users;
+DROP POLICY IF EXISTS "Users can view own profile"   ON public.users;
+DROP POLICY IF EXISTS "Admins can view all users"    ON public.users;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.users;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.users;
 
--- SELECT: users see their own row; admin/manager/staff/viewer see everyone
 CREATE POLICY "Users can view own profile"
   ON public.users FOR SELECT USING (auth.uid() = id);
 
-CREATE POLICY "Staff can view all users"
-  ON public.users FOR SELECT USING (public.is_staff());
+CREATE POLICY "Admins can view all users"
+  ON public.users FOR SELECT USING (public.is_admin_or_manager());
 
--- INSERT: new users can insert their own profile row on registration
-CREATE POLICY "Users can insert own profile"
-  ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
-
--- UPDATE: users update their own profile; admins can update any user (role changes, etc.)
 CREATE POLICY "Users can update own profile"
   ON public.users FOR UPDATE USING (auth.uid() = id);
 
-CREATE POLICY "Admins can update any user"
-  ON public.users FOR UPDATE USING (public.is_admin());
-
--- DELETE: only admins can remove users (user management panel)
-CREATE POLICY "Admins can delete users"
-  ON public.users FOR DELETE USING (public.is_admin());
-
--- ── staff_profiles ────────────────────────────────────────────────────────────
-
-DROP POLICY IF EXISTS "Staff can view own profile"        ON public.staff_profiles;
-DROP POLICY IF EXISTS "Admins manage staff profiles"      ON public.staff_profiles;
-DROP POLICY IF EXISTS "Anyone can view staff profiles"    ON public.staff_profiles;
-
--- Public read (for booking step that shows available staff)
-CREATE POLICY "Anyone can view staff profiles"
-  ON public.staff_profiles FOR SELECT USING (true);
-
--- Staff can update their own profile
-CREATE POLICY "Staff can view own profile"
-  ON public.staff_profiles FOR UPDATE
-  USING (user_id = auth.uid());
-
--- Admins/managers can fully manage staff profiles
-CREATE POLICY "Admins manage staff profiles"
-  ON public.staff_profiles FOR ALL USING (public.is_admin_or_manager());
-
--- ── staff_availability ────────────────────────────────────────────────────────
-
-DROP POLICY IF EXISTS "Anyone can view staff availability"   ON public.staff_availability;
-DROP POLICY IF EXISTS "Admins manage staff availability"     ON public.staff_availability;
-DROP POLICY IF EXISTS "Staff manage own availability"        ON public.staff_availability;
-
--- Public read (booking UI needs to know when staff are free)
-CREATE POLICY "Anyone can view staff availability"
-  ON public.staff_availability FOR SELECT USING (true);
-
--- Staff manage their own availability rows
-CREATE POLICY "Staff manage own availability"
-  ON public.staff_availability FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.staff_profiles sp
-      WHERE sp.id = staff_id AND sp.user_id = auth.uid()
-    )
-  );
-
--- Admins/managers manage all availability
-CREATE POLICY "Admins manage staff availability"
-  ON public.staff_availability FOR ALL USING (public.is_admin_or_manager());
+-- Required for /auth/register — new users insert their own public.users row
+CREATE POLICY "Users can insert own profile"
+  ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- ── appointments ─────────────────────────────────────────────────────────────
 
-DROP POLICY IF EXISTS "Customers see own appointments"     ON public.appointments;
-DROP POLICY IF EXISTS "Customers can book appointments"    ON public.appointments;
-DROP POLICY IF EXISTS "Staff see assigned appointments"    ON public.appointments;
-DROP POLICY IF EXISTS "Admins see all appointments"        ON public.appointments;
-DROP POLICY IF EXISTS "Admins manage all appointments"     ON public.appointments;
+DROP POLICY IF EXISTS "Customers see own appointments"  ON public.appointments;
+DROP POLICY IF EXISTS "Staff see assigned appointments" ON public.appointments;
+DROP POLICY IF EXISTS "Admins see all appointments"     ON public.appointments;
 
--- SELECT: customers see their own; staff see assigned; admins see all
 CREATE POLICY "Customers see own appointments"
   ON public.appointments FOR SELECT USING (customer_id = auth.uid());
 
@@ -350,15 +253,7 @@ CREATE POLICY "Staff see assigned appointments"
     )
   );
 
--- INSERT: authenticated users can insert their own appointment (customer_id = their id)
--- Walk-in / admin-created bookings (customer_id = NULL) go through the
--- service-role admin client in /api/admin/bookings and bypass RLS entirely.
-CREATE POLICY "Customers can book appointments"
-  ON public.appointments FOR INSERT
-  WITH CHECK (customer_id = auth.uid());
-
--- ALL (SELECT + INSERT + UPDATE + DELETE): admins and managers can do everything
-CREATE POLICY "Admins manage all appointments"
+CREATE POLICY "Admins see all appointments"
   ON public.appointments FOR ALL USING (public.is_admin_or_manager());
 
 -- ── products ─────────────────────────────────────────────────────────────────
@@ -367,15 +262,15 @@ DROP POLICY IF EXISTS "Anyone can view products" ON public.products;
 DROP POLICY IF EXISTS "Admins manage products"   ON public.products;
 
 CREATE POLICY "Anyone can view products"
-  ON public.products FOR SELECT USING (true);  -- show unavailable items too (admin needs them)
+  ON public.products FOR SELECT USING (is_available = true);
 
 CREATE POLICY "Admins manage products"
   ON public.products FOR ALL USING (public.is_admin_or_manager());
 
 -- ── product_inquiries ────────────────────────────────────────────────────────
 
-DROP POLICY IF EXISTS "Anyone can insert inquiry" ON public.product_inquiries;
-DROP POLICY IF EXISTS "Admins view all inquiries" ON public.product_inquiries;
+DROP POLICY IF EXISTS "Anyone can insert inquiry"   ON public.product_inquiries;
+DROP POLICY IF EXISTS "Admins view all inquiries"   ON public.product_inquiries;
 
 CREATE POLICY "Anyone can insert inquiry"
   ON public.product_inquiries FOR INSERT WITH CHECK (true);
@@ -388,7 +283,6 @@ CREATE POLICY "Admins view all inquiries"
 DROP POLICY IF EXISTS "Anyone read active services" ON public.services;
 DROP POLICY IF EXISTS "Admins manage services"      ON public.services;
 
--- Customers only see active services; admins see all (managed via admin client)
 CREATE POLICY "Anyone read active services"
   ON public.services FOR SELECT USING (is_active = true);
 
