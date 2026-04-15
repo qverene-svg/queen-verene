@@ -8,7 +8,7 @@ import {
   LogOut, Scissors, LayoutDashboard, Eye, EyeOff, Search, Bell,
   Menu, X, ExternalLink, TrendingDown, ShoppingCart,
   Pencil, Trash2, Check, XCircle, UserCog, CalendarPlus,
-  Phone, Mail, CreditCard, Clock, StickyNote, Info, Send,
+  Phone, Mail, CreditCard, Clock, StickyNote, Info, Send, Wallet,
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { createClient } from "@/lib/supabase/client";
@@ -18,6 +18,7 @@ import { AdminProductsPanel } from "@/components/admin/AdminProductsPanel";
 import { AdminCareersPanel } from "@/components/admin/AdminCareersPanel";
 import { AdminUsersPanel } from "@/components/admin/AdminUsersPanel";
 import { AdminBookingPanel } from "@/components/admin/AdminBookingPanel";
+import { AdminWalkinPaymentPanel } from "@/components/admin/AdminWalkinPaymentPanel";
 import { formatCurrency, cn } from "@/lib/utils";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
@@ -25,7 +26,7 @@ import toast from "react-hot-toast";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Screen  = "login" | "checking" | "dashboard";
-type NavItem = "Overview" | "Services" | "Shop" | "Careers" | "Users" | "New Booking";
+type NavItem = "Overview" | "Services" | "Shop" | "Careers" | "Users" | "New Booking" | "Walk-in Pay";
 
 type Appointment = {
   id: string;
@@ -155,6 +156,7 @@ export default function AdminPage() {
     { icon: Briefcase,       label: "Careers",  restricted: !canManage },
     { icon: UserCog,         label: "Users",       restricted: !isAdmin   },
     { icon: CalendarPlus,    label: "New Booking", restricted: !canManage },
+    { icon: Wallet,          label: "Walk-in Pay", restricted: !canManage },
   ];
   const visibleNav = NAV_ITEMS.filter((n) => !n.restricted);
 
@@ -872,6 +874,7 @@ export default function AdminPage() {
                     }}
                   />
                 )}
+                {activeNav === "Walk-in Pay" && canManage && <AdminWalkinPaymentPanel />}
 
               </motion.div>
             </AnimatePresence>
