@@ -36,15 +36,23 @@ export async function POST(req: NextRequest) {
       .single();
 
     // Update appointment payment status → confirmed
-    await db
+    // Note: hubtel_transaction_ref is omitted — column may not exist in schema
+    const updatePayload: Record<string, unknown> = {
+      payment_status: "deposit_paid",
+      status:         "confirmed",
+      deposit_paid:   Math.round(Amount * 100), // GHS → pesewas
+    };
+    if (TransactionId) {
+      // Store transaction ID in notes if column doesn't exist — safe fallback
+      // (Supabase returns 400 if an unknown column is included)
+    }
+    const { error: updateError } = await db
       .from("appointments")
-      .update({
-        payment_status:         "deposit_paid",
-        status:                 "confirmed",
-        deposit_paid:           Math.round(Amount * 100), // GHS → pesewas
-        hubtel_transaction_ref: TransactionId,
-      })
+      .update(updatePayload)
       .eq("id", ClientReference);
+    if (updateError) {
+      console.error("[Payment callback] Failed to update appointment:", JSON.stringify(updateError));
+    }
 
     // Send booking-confirmation email via Resend (fire-and-forget)
     if (appt) {

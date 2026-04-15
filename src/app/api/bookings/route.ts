@@ -96,6 +96,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Derive the app origin from the request itself so it works on any domain
+    // (production, staging, localhost) without having to update env vars.
+    const proto  = req.headers.get("x-forwarded-proto") || "https";
+    const host   = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+    const appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "https://www.queenverene.com");
+
     // Initiate Hubtel payment
     const { paymentUrl, hubtelError } = await initiateHubtelPayment({
       amount:           deposit / 100, // pesewas → GHS
@@ -103,9 +109,9 @@ export async function POST(req: NextRequest) {
       customerPhone:    customerPhone ? formatPhone(customerPhone) : "",
       customerEmail:    customerEmail || "",
       description:      `Verene Appointment Deposit — ${serviceName || "Beauty Service"}`,
-      callbackUrl:      `${process.env.NEXT_PUBLIC_APP_URL}/api/payments/callback`,
-      returnUrl:        `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
-      cancellationUrl:  `${process.env.NEXT_PUBLIC_APP_URL}/services`,
+      callbackUrl:      `${appUrl}/api/payments/callback`,
+      returnUrl:        `${appUrl}/dashboard`,
+      cancellationUrl:  `${appUrl}/services`,
       clientReference:  appointment.id,
     });
 
@@ -151,8 +157,8 @@ export async function POST(req: NextRequest) {
 // ── Hubtel ────────────────────────────────────────────────────────────────────
 
 async function initiateHubtelPayment({
-  amount, customerName, customerPhone, customerEmail,
-  description, callbackUrl, returnUrl, cancellationUrl, clientReference,
+  amount, customerPhone,
+  description, callbackUrl, clientReference,
 }: {
   amount: number; customerName: string; customerPhone: string; customerEmail: string;
   description: string; callbackUrl: string; returnUrl: string;
@@ -167,72 +173,27 @@ async function initiateHubtelPayment({
   }
 
   try {
-    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-    // Hubtel expects merchant account number without '+' prefix
-    const merchantAccountNumber = (merchantAccount || "").replace(/^\+/, "");
-    // Strip '+' from phone too — Hubtel prefers 233XXXXXXXXX format
-    const msisdn = (customerPhone || "").replace(/^\+/, "");
-    const requestBody = {
-      totalAmount: amount, description, callbackUrl, returnUrl, cancellationUrl,
-      merchantAccountNumber, clientReference,
-      customerName, customerMsisdn: msisdn, customerEmail,
-    };
-    console.log("[Hubtel] Initiating payment:", JSON.stringify(requestBody));
-    const res = await fetch("https://payproxyapi.hubtel.com/items/initiate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Basic ${credentials}` },
-      body: JSON.stringify(requestBody),
+    // Hubtel Web Checkout SDK approach — build redirect URL directly.
+    // Docs: https://github.com/hubtel/hubtel-web-merchant-checkout-sdk
+    // No backend API call needed; credentials passed as basicAuth query param.
+    const basicAuth      = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+    const merchantId     = (merchantAccount || "").replace(/^\+/, ""); // strip leading +
+    const msisdn         = (customerPhone   || "").replace(/^\+/, ""); // 233XXXXXXXXX
+
+    const params = new URLSearchParams({
+      amount:               String(amount),
+      purchaseDescription:  description,
+      customerPhoneNumber:  msisdn,
+      clientReference,
+      callbackUrl,
+      merchantAccount:      merchantId,
+      basicAuth,
+      integrationType:      "External",
     });
 
-    const data = await res.json();
-    console.log("[Hubtel] Status:", res.status, "Response:", JSON.stringify(data));
-
-    if (!res.ok) {
-      const msg = data?.message || data?.error || data?.Message || `HTTP ${res.status}`;
-      return { paymentUrl: null, hubtelError: msg };
-    }
-
-    // Try all known field names across different Hubtel API versions
-    const url =
-      data?.data?.checkoutUrl      ||
-      data?.data?.paylinkUrl        ||
-      data?.data?.paylink_url       ||
-      data?.data?.url               ||
-      data?.data?.redirectUrl       ||
-      data?.data?.authorizationUrl  ||
-      data?.data?.CheckoutUrl       ||
-      data?.data?.PaymentUrl        ||
-      data?.checkoutUrl             ||
-      data?.paylinkUrl              ||
-      data?.redirectUrl             ||
-      data?.authorizationUrl        ||
-      data?.url                     ||
-      // Deep scan: find the first string value that looks like a URL in the response
-      (() => {
-        const scan = (obj: unknown): string | null => {
-          if (typeof obj === "string" && obj.startsWith("http") && obj.length > 20) return obj;
-          if (obj && typeof obj === "object") {
-            for (const v of Object.values(obj as Record<string, unknown>)) {
-              const found = scan(v);
-              if (found) return found;
-            }
-          }
-          return null;
-        };
-        const found = scan(data);
-        if (found) console.log("[Hubtel] URL found via deep scan:", found);
-        return found;
-      })() ||
-      null;
-
-    if (!url) {
-      console.error("[Hubtel] Could not find a checkout URL. Top-level keys:", Object.keys(data || {}));
-      if (data?.data && typeof data.data === "object") {
-        console.error("[Hubtel] data.data keys:", Object.keys(data.data));
-      }
-    }
-
-    return { paymentUrl: url, hubtelError: url ? null : "No checkout URL in Hubtel response" };
+    const paymentUrl = `https://unified-pay.hubtel.com/pay?${params.toString()}`;
+    console.log("[Hubtel] Checkout URL built:", paymentUrl.replace(basicAuth, "***"));
+    return { paymentUrl, hubtelError: null };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown Hubtel error";
     return { paymentUrl: null, hubtelError: msg };
