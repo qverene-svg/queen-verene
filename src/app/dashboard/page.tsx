@@ -408,7 +408,7 @@ function AppointmentCard({ appt, onCancel }: { appt: Appointment; onCancel?: () 
 
 function PaymentRow({ appt }: { appt: Appointment }) {
   const isPaid    = appt.payment_status === "paid" || appt.deposit_paid > 0;
-  const isPending = appt.payment_status === "pending";
+  const isPending = appt.payment_status === "unpaid";
 
   return (
     <div className="bg-white rounded-2xl p-5 border border-black/[0.06] flex items-center gap-4">

@@ -4,10 +4,17 @@ import { createAdminClient } from "@/lib/supabase/server";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { Data } = body;
-    if (!Data) return NextResponse.json({ status: "ignored" });
+    const payload = body?.Data ?? body?.data ?? body;
+    if (!payload) return NextResponse.json({ status: "ignored" });
 
-    const { ClientReference, Status, TransactionId, Amount } = Data;
+    const ClientReference = payload.ClientReference ?? payload.clientReference;
+    const Status = payload.Status ?? payload.status;
+    const TransactionId = payload.TransactionId ?? payload.transactionId;
+    const Amount = Number(payload.Amount ?? payload.amount ?? 0);
+
+    if (!ClientReference) {
+      return NextResponse.json({ status: "ignored_missing_reference" });
+    }
 
     if (Status !== "Success") {
       return NextResponse.json({ status: "payment_failed" });
@@ -21,7 +28,7 @@ export async function POST(req: NextRequest) {
     const { data: appt } = await db
       .from("appointments")
       .select(`
-        id, start_time,
+        id, start_time, notes,
         users:customer_id ( full_name, email, phone ),
         services:service_id ( name )
       `)
@@ -41,14 +48,38 @@ export async function POST(req: NextRequest) {
 
     // Send booking-confirmation email via Resend (fire-and-forget)
     if (appt) {
-      sendConfirmationEmail({
-        customerName:  appt.users?.full_name  ?? "Valued Client",
-        customerEmail: appt.users?.email      ?? null,
-        customerPhone: appt.users?.phone      ?? null,
-        serviceName:   appt.services?.name    ?? "Beauty Service",
-        startTime:     appt.start_time,
-        depositAmount: Amount,
-      }).catch(console.error);
+      const meta = parseMetaFromNotes(appt.notes ?? "");
+      const channel = normalizeChannel(meta.channel);
+      const fallbackName = meta.name || "Valued Client";
+      const fallbackPhone = meta.phone || null;
+      const fallbackEmail = meta.email || null;
+      const customerName = appt.users?.full_name ?? fallbackName;
+      const customerPhone = appt.users?.phone ?? fallbackPhone;
+      const customerEmail = appt.users?.email ?? fallbackEmail;
+      const serviceName = appt.services?.name ?? "Beauty Service";
+
+      if (channel === "sms" && customerPhone) {
+        sendConfirmationSms({
+          customerName,
+          customerPhone,
+          serviceName,
+          startTime: appt.start_time,
+          depositAmount: Amount,
+        }).catch(console.error);
+      } else if (channel === "email" && customerEmail) {
+        sendConfirmationEmail({
+          customerName,
+          customerEmail,
+          serviceName,
+          startTime: appt.start_time,
+          depositAmount: Amount,
+        }).catch(console.error);
+      }
+
+      // keep reminders stable for downstream jobs
+      if (meta.channel !== channel) {
+        await db.from("appointments").update({ notes: rewriteNotesMeta(appt.notes ?? "", { ...meta, channel }) }).eq("id", ClientReference);
+      }
     }
 
     return NextResponse.json({ status: "ok" });
@@ -58,19 +89,66 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ── Resend email confirmation ─────────────────────────────────────────────────
+function parseMetaFromNotes(notes: string): Record<string, string> {
+  const match = notes.match(/^\[meta:([^\]]+)\]\s*/);
+  if (!match) return {};
+  const params = new URLSearchParams(match[1]);
+  return {
+    channel: params.get("channel") ?? "",
+    name: params.get("name") ?? "",
+    phone: params.get("phone") ?? "",
+    email: params.get("email") ?? "",
+  };
+}
 
-async function sendConfirmationEmail({
+function rewriteNotesMeta(notes: string, meta: Record<string, string>): string {
+  const withoutPrefix = notes.replace(/^\[meta:[^\]]+\]\s*/, "");
+  const prefix = `[meta:${new URLSearchParams(meta).toString()}]`;
+  return `${prefix} ${withoutPrefix}`.trim();
+}
+
+function normalizeChannel(input: string | undefined): "sms" | "email" {
+  return input?.toLowerCase() === "email" ? "email" : "sms";
+}
+
+async function sendConfirmationSms({
   customerName,
-  customerEmail,
   customerPhone,
   serviceName,
   startTime,
   depositAmount,
 }: {
   customerName: string;
+  customerPhone: string;
+  serviceName: string;
+  startTime: string;
+  depositAmount: number;
+}) {
+  const date = new Date(startTime).toLocaleString("en-GH", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const message = `Hi ${customerName}! Your Verene booking for ${serviceName} on ${date} is confirmed. We received your GHS ${depositAmount.toFixed(2)} deposit.`;
+  const { sendHubtelSms } = await import("@/lib/hubtelSms");
+  await sendHubtelSms(customerPhone, message);
+}
+
+// ── Resend email confirmation ─────────────────────────────────────────────────
+
+async function sendConfirmationEmail({
+  customerName,
+  customerEmail,
+  serviceName,
+  startTime,
+  depositAmount,
+}: {
+  customerName: string;
   customerEmail: string | null;
-  customerPhone: string | null;
   serviceName: string;
   startTime: string;
   depositAmount: number;
@@ -79,20 +157,20 @@ async function sendConfirmationEmail({
   if (!resendKey || resendKey === "your_resend_api_key" || !customerEmail) return;
 
   const date = new Date(startTime).toLocaleString("en-GH", {
-    weekday:  "long",
-    year:     "numeric",
-    month:    "long",
-    day:      "numeric",
-    hour:     "2-digit",
-    minute:   "2-digit",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 
   const { Resend } = await import("resend");
   const resend = new Resend(resendKey);
 
   await resend.emails.send({
-    from:    process.env.RESEND_FROM_EMAIL ?? "hello@verene.com",
-    to:      customerEmail,
+    from: process.env.RESEND_FROM_EMAIL ?? "hello@verene.com",
+    to: customerEmail,
     subject: `Your Verene Appointment is Confirmed ✨`,
     html: `
 <!DOCTYPE html>

@@ -19,39 +19,19 @@ import { formatCurrency, cn } from "@/lib/utils";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 
-// ── Demo data ─────────────────────────────────────────────────────────────────
-
-const REVENUE_DATA = [
-  { month: "Jan", revenue: 180000 },
-  { month: "Feb", revenue: 240000 },
-  { month: "Mar", revenue: 320000 },
-  { month: "Apr", revenue: 280000 },
-  { month: "May", revenue: 410000 },
-  { month: "Jun", revenue: 360000 },
-];
-
-const PEAK_HOURS = [
-  { hour: "9am", count: 5  }, { hour: "10am", count: 8  },
-  { hour: "11am", count: 12 }, { hour: "12pm", count: 7  },
-  { hour: "1pm",  count: 4  }, { hour: "2pm",  count: 9  },
-  { hour: "3pm",  count: 11 }, { hour: "4pm",  count: 14 },
-  { hour: "5pm",  count: 10 },
-];
-
-const DEMO_APPOINTMENTS = [
-  { id: "BK001", serviceName: "Ghana Braiding",     client: "Akosua Mensah",  time: "2025-06-12T09:00:00", status: "confirmed", amount: 45000 },
-  { id: "BK002", serviceName: "Bridal Makeup",       client: "Ama Owusu",      time: "2025-06-12T11:00:00", status: "confirmed", amount: 80000 },
-  { id: "BK003", serviceName: "Wig Installation",    client: "Efua Darko",     time: "2025-06-12T13:30:00", status: "pending",   amount: 35000 },
-  { id: "BK004", serviceName: "Luxury Mani & Pedi",  client: "Abena Asante",   time: "2025-06-11T14:00:00", status: "confirmed", amount: 12000 },
-  { id: "BK005", serviceName: "Deep Hair Treatment", client: "Serwa Boateng",  time: "2025-06-11T10:00:00", status: "cancelled", amount: 18000 },
-];
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Screen  = "login" | "checking" | "dashboard";
 type NavItem = "Overview" | "Services" | "Shop" | "Careers";
 
-type Appointment = typeof DEMO_APPOINTMENTS[number] & { serviceName: string; client: string; time: string; status: string; amount: number };
+type Appointment = {
+  id: string;
+  serviceName: string;
+  client: string;
+  time: string;
+  status: string;
+  amount: number;
+};
 type EditingAppt = { id: string; serviceName: string; client: string; time: string; status: string; amount: number };
 
 const ALLOWED_ROLES = new Set(["admin", "manager", "staff"]);
@@ -139,7 +119,8 @@ export default function AdminPage() {
   const [activeNav, setActiveNav] = useState<NavItem>("Overview");
   const [sideOpen,  setSideOpen]  = useState(false);
   const [search,    setSearch]    = useState("");
-  const [appointments, setAppointments] = useState(DEMO_APPOINTMENTS);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [editingId,    setEditingId]    = useState<string | null>(null);
   const [editDraft,    setEditDraft]    = useState<EditingAppt | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -155,6 +136,67 @@ export default function AdminPage() {
   ];
   const visibleNav = NAV_ITEMS.filter((n) => !n.restricted);
 
+  const monthlyRevenue = appointments.reduce((sum, a) => sum + a.amount, 0);
+  const activeBookings = appointments.filter((a) => a.status !== "cancelled" && a.status !== "completed").length;
+  const activeClients = new Set(appointments.map((a) => a.client.toLowerCase())).size;
+  const avgOrder = appointments.length > 0 ? Math.round(monthlyRevenue / appointments.length) : 0;
+
+  const revenueMap = new Map<string, number>();
+  for (let i = 5; i >= 0; i -= 1) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    const key = format(d, "MMM");
+    revenueMap.set(key, 0);
+  }
+  appointments.forEach((a) => {
+    const key = format(new Date(a.time), "MMM");
+    if (revenueMap.has(key)) {
+      revenueMap.set(key, (revenueMap.get(key) ?? 0) + a.amount);
+    }
+  });
+  const revenueData = Array.from(revenueMap.entries()).map(([month, revenue]) => ({ month, revenue }));
+
+  const peakHourMap = new Map<string, number>();
+  appointments.forEach((a) => {
+    const hour = format(new Date(a.time), "ha").toLowerCase();
+    peakHourMap.set(hour, (peakHourMap.get(hour) ?? 0) + 1);
+  });
+  const peakHours = Array.from(peakHourMap.entries())
+    .map(([hour, count]) => ({ hour, count }))
+    .sort((a, b) => Number.parseInt(a.hour, 10) - Number.parseInt(b.hour, 10));
+
+  const loadAppointments = async () => {
+    setAppointmentsLoading(true);
+    const sb = createClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (sb.from("appointments") as any)
+      .select("id, start_time, status, total_price, services(name), users:customer_id(full_name)")
+      .order("start_time", { ascending: false })
+      .limit(200);
+
+    if (error) {
+      toast.error(`Could not load bookings: ${error.message}`);
+      setAppointments([]);
+      setAppointmentsLoading(false);
+      return;
+    }
+
+    const mapped: Appointment[] = ((data as Array<Record<string, unknown>>) || []).map((row) => {
+      const service = row.services as { name?: string } | null;
+      const user = row.users as { full_name?: string } | null;
+      return {
+        id: String(row.id ?? ""),
+        serviceName: service?.name || "Service",
+        client: user?.full_name || "Client",
+        time: String(row.start_time ?? new Date().toISOString()),
+        status: String(row.status ?? "pending"),
+        amount: Number(row.total_price ?? 0),
+      };
+    });
+    setAppointments(mapped);
+    setAppointmentsLoading(false);
+  };
+
   useEffect(() => {
     const sb = createClient();
     sb.auth.getSession().then(async ({ data: { session } }) => {
@@ -164,6 +206,7 @@ export default function AdminPage() {
       if (!profile || !isAllowedStaffRole(profile.role)) { setScreen("login"); return; }
       setRole(profile.role.toLowerCase());
       setScreen("dashboard");
+      loadAppointments();
     });
   }, []);
 
@@ -193,6 +236,7 @@ export default function AdminPage() {
       await sb.auth.signOut(); setLoading(false); return;
     }
     setRole(p.role.toLowerCase()); setScreen("dashboard"); setLoading(false);
+    loadAppointments();
   };
 
   const handleLogout = async () => {
@@ -465,10 +509,10 @@ export default function AdminPage() {
                     {/* KPI grid */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 16 }}>
                       {[
-                        { label: "Monthly Revenue",  value: "GHS 3,600", icon: DollarSign,  delta: 12, up: true  },
-                        { label: "Total Bookings",   value: "46",         icon: Calendar,    delta: 8,  up: true  },
-                        { label: "Active Clients",   value: "128",        icon: Users,       delta: 5,  up: true  },
-                        { label: "Avg Order Value",  value: "GHS 78",     icon: ShoppingCart,delta: 3,  up: false },
+                        { label: "Revenue (last 6 months)", value: formatCurrency(monthlyRevenue), icon: DollarSign, delta: 0, up: true },
+                        { label: "Total Bookings", value: String(appointments.length), icon: Calendar, delta: 0, up: true },
+                        { label: "Active Clients", value: String(activeClients), icon: Users, delta: 0, up: true },
+                        { label: "Avg Order Value", value: formatCurrency(avgOrder), icon: ShoppingCart, delta: 0, up: true },
                       ].map((m, i) => (
                         <motion.div key={m.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
                           <KpiCard {...m} />
@@ -484,15 +528,15 @@ export default function AdminPage() {
                           style={{ background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "22px 24px" }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
                             <div>
-                              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)" }}>Revenue · 2025</p>
+                              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)" }}>Revenue</p>
                               <p style={{ fontSize: 15, fontWeight: 600, color: "#fff", marginTop: 3 }}>Monthly Revenue</p>
                             </div>
                             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: "#34d399", background: "rgba(52,211,153,0.1)", borderRadius: 999, padding: "3px 10px" }}>
-                              <TrendingUp size={10} /> 12.5%
+                              <TrendingUp size={10} /> {activeBookings} active
                             </span>
                           </div>
                           <Recharts.ResponsiveContainer width="100%" height={190}>
-                            <Recharts.AreaChart data={REVENUE_DATA}>
+                            <Recharts.AreaChart data={revenueData}>
                               <defs>
                                 <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                                   <stop offset="5%"  stopColor="#b22222" stopOpacity={0.3} />
@@ -514,7 +558,7 @@ export default function AdminPage() {
                           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)" }}>Bookings</p>
                           <p style={{ fontSize: 15, fontWeight: 600, color: "#fff", marginTop: 3, marginBottom: 20 }}>Peak Hours</p>
                           <Recharts.ResponsiveContainer width="100%" height={190}>
-                            <Recharts.BarChart data={PEAK_HOURS} barSize={10}>
+                            <Recharts.BarChart data={peakHours} barSize={10}>
                               <Recharts.CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                               <Recharts.XAxis dataKey="hour" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.28)" }} axisLine={false} tickLine={false} />
                               <Recharts.YAxis tick={{ fontSize: 10, fill: "rgba(255,255,255,0.28)" }} axisLine={false} tickLine={false} />
@@ -538,7 +582,7 @@ export default function AdminPage() {
                           <p style={{ fontSize: 15, fontWeight: 600, color: "#fff", marginTop: 3 }}>Recent Bookings</p>
                         </div>
                         <span style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", fontStyle: "italic" }}>
-                          Demo data — connect Supabase for live records
+                          {appointmentsLoading ? "Loading live bookings..." : `${appointments.length} live booking(s)`}
                         </span>
                       </div>
 
@@ -624,7 +668,18 @@ export default function AdminPage() {
                                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                                         <span style={{ fontSize: 11, color: "#f87171", marginRight: 4 }}>Delete?</span>
                                         <button
-                                          onClick={() => { setAppointments((a) => a.filter((x) => x.id !== appt.id)); setDeleteConfirmId(null); toast.success("Booking deleted."); }}
+                                          onClick={async () => {
+                                            const sb = createClient();
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            const { error } = await (sb.from("appointments") as any).delete().eq("id", appt.id);
+                                            if (error) {
+                                              toast.error(error.message);
+                                              return;
+                                            }
+                                            setAppointments((a) => a.filter((x) => x.id !== appt.id));
+                                            setDeleteConfirmId(null);
+                                            toast.success("Booking deleted.");
+                                          }}
                                           style={{ padding: "4px 10px", borderRadius: 6, background: "#b22222", border: "none", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                                           Yes
                                         </button>
@@ -636,8 +691,21 @@ export default function AdminPage() {
                                     ) : isEditing ? (
                                       <div style={{ display: "flex", gap: 6 }}>
                                         <button
-                                          onClick={() => {
+                                          onClick={async () => {
                                             if (!editDraft) return;
+                                            const sb = createClient();
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            const { error } = await (sb.from("appointments") as any)
+                                              .update({
+                                                start_time: new Date(editDraft.time).toISOString(),
+                                                status: editDraft.status,
+                                                total_price: Number(editDraft.amount),
+                                              })
+                                              .eq("id", appt.id);
+                                            if (error) {
+                                              toast.error(error.message);
+                                              return;
+                                            }
                                             setAppointments((a) => a.map((x) => x.id === appt.id ? { ...x, ...editDraft, amount: Number(editDraft.amount) } : x));
                                             setEditingId(null); setEditDraft(null);
                                             toast.success("Booking updated.");

@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Search, MessageCircle } from "lucide-react";
 import { FloatingPageNav } from "@/components/layout/FloatingPageNav";
-import { Badge } from "@/components/ui/Badge";
 import { formatCurrency } from "@/lib/utils";
 import { businessWhatsAppHref } from "@/lib/contact";
 import { createClient } from "@/lib/supabase/client";
@@ -19,24 +18,17 @@ interface Product {
   sku: string;
 }
 
-const DEMO_PRODUCTS: Product[] = [
-  { id: "p1", name: "Brazilian Wavy Bundle",         description: "100% virgin Brazilian hair, 3-bundle deal. Silky texture with natural wave pattern.",              price: 120000, is_available: true,  image_urls: ["https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400&q=80"], category: "Hair Extensions", sku: "BRAZ-WVY-001" },
-  { id: "p2", name: "Peruvian Straight Bundle",      description: "Premium Peruvian straight hair. Ultra-smooth, easy to style and colour.",                           price: 110000, is_available: true,  image_urls: ["https://images.unsplash.com/photo-1519415510236-818bdfcd6d3a?w=400&q=80"], category: "Hair Extensions", sku: "PERU-STR-001" },
-  { id: "p3", name: "Closure Wig — Kinky Curly",    description: "Full lace closure wig. Natural kinky curly texture, adjustable band.",                              price: 280000, is_available: true,  image_urls: ["https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&q=80"], category: "Wigs",            sku: "WIG-KNK-001" },
-  { id: "p4", name: "Moisturising Hair Mask",        description: "Deep conditioning treatment. Restores moisture and shine. Suitable for all hair types.",            price: 8500,   is_available: true,  image_urls: ["https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400&q=80"], category: "Hair Care",       sku: "MASK-MOI-001" },
-  { id: "p5", name: "Frontal Lace Wig — Loose Wave", description: "13×4 frontal lace wig with loose wave pattern. Pre-plucked hairline.",                             price: 320000, is_available: true,  image_urls: ["https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=400&q=80"], category: "Wigs",            sku: "WIG-LWV-001" },
-  { id: "p6", name: "Scalp Oil Treatment",           description: "Nourishing scalp oil with rosemary and castor oil blend. Promotes growth.",                        price: 6500,   is_available: false, image_urls: ["https://images.unsplash.com/photo-1622287162716-f311baa1a2b8?w=400&q=80"], category: "Hair Care",       sku: "OIL-SCP-001" },
-];
-
 export default function ShopPage() {
-  const [products, setProducts] = useState<Product[]>(DEMO_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch]     = useState("");
   const [filter, setFilter]     = useState("All");
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.from("products").select("*").then(({ data }) => {
-      if (data && data.length > 0) setProducts(data as Product[]);
+    supabase.from("products").select("*").order("name", { ascending: true }).then(({ data }) => {
+      setProducts((data as Product[]) || []);
+      setLoading(false);
     });
   }, []);
 
@@ -118,7 +110,7 @@ export default function ShopPage() {
           @media (min-width: 1024px) { .shop-grid { grid-template-columns: repeat(4, 1fr); gap: 18px; } }
         `}</style>
         <div className="shop-grid">
-          {filtered.map((product, i) => (
+          {!loading && filtered.map((product, i) => (
             <motion.div
               key={product.id}
               initial={{ opacity: 0, y: 16 }}
@@ -145,7 +137,7 @@ export default function ShopPage() {
               <div style={{ position: "relative", aspectRatio: "1/1", overflow: "hidden", background: "#f0eeeb", flexShrink: 0 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={product.image_urls[0]}
+                  src={product.image_urls?.[0] || "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=80"}
                   alt={product.name}
                   style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.55s ease" }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLImageElement).style.transform = "scale(1.08)"; }}
@@ -212,7 +204,13 @@ export default function ShopPage() {
           ))}
         </div>
 
-        {filtered.length === 0 && (
+        {loading && (
+          <div className="text-center py-20 text-[#0a0a0a]/35">
+            <p className="text-base font-semibold mb-1">Loading products...</p>
+          </div>
+        )}
+
+        {!loading && filtered.length === 0 && (
           <div className="text-center py-20 text-[#0a0a0a]/35">
             <p className="text-base font-semibold mb-1">No products found</p>
             <p className="text-xs">Try adjusting your search or filter.</p>

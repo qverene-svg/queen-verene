@@ -71,15 +71,29 @@ export function ConfirmStep({ booking, onBack, onComplete }: ConfirmStepProps) {
           deposit,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Booking failed");
+      let data: Record<string, unknown> = {};
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error("Server returned an invalid response. Please try again.");
+      }
+
+      if (!res.ok) {
+        const msg = typeof data.error === "string" ? data.error : `Server error (${res.status})`;
+        throw new Error(msg);
+      }
 
       if (data.paymentUrl) {
-        window.location.href = data.paymentUrl;
+        // Redirect to Hubtel checkout page
+        toast.success("Redirecting to payment…");
+        window.location.href = data.paymentUrl as string;
       } else {
-        setDone(true);
-        toast.success("Booking confirmed!");
-        setTimeout(() => onComplete?.(), 2500);
+        // Payment gateway not reachable — booking is saved but payment pending
+        console.warn("[ConfirmStep] paymentUrl was null. Server response:", data);
+        toast.error(
+          "Booking saved, but we could not redirect you to payment. Please contact us to complete your GHS 50 deposit.",
+          { duration: 10000 }
+        );
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong.");
