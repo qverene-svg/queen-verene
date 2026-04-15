@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Clock, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -58,6 +58,7 @@ export function ServiceStep({
   const [services, setServices]   = useState<Service[]>(DEMO_SERVICES);
   const [picked, setPicked]       = useState<string | undefined>(selected);
   const [filter, setFilter]       = useState<string>("all");
+  const continueRef               = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -72,6 +73,14 @@ export function ServiceStep({
   const handleNext = () => {
     if (!pickedService) return;
     onNext({ serviceId: pickedService.id, serviceName: pickedService.name, servicePrice: pickedService.price, serviceDuration: pickedService.duration_minutes });
+  };
+
+  const handleSelect = (serviceId: string) => {
+    setPicked(serviceId);
+    // Scroll the Continue button into view so the user sees it immediately
+    setTimeout(() => {
+      continueRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 120);
   };
 
   return (
@@ -109,7 +118,7 @@ export function ServiceStep({
           return (
             <button
               key={service.id}
-              onClick={() => setPicked(service.id)}
+              onClick={() => handleSelect(service.id)}
               style={{
                 textAlign: "left", background: "#fff", borderRadius: 12, overflow: "hidden", padding: 0,
                 border: `2px solid ${isSelected ? "#b22222" : "rgba(0,0,0,0.07)"}`,
@@ -189,7 +198,7 @@ export function ServiceStep({
         })}
       </div>
 
-      <div className="mt-10 flex justify-end">
+      <div ref={continueRef} className="mt-10 flex justify-end">
         <Button onClick={handleNext} disabled={!picked} size="lg" className="gap-2 w-full sm:w-auto">
           Continue <ArrowRight size={16} />
         </Button>

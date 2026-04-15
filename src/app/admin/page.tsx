@@ -7,7 +7,8 @@ import {
   Users, Calendar, TrendingUp, DollarSign, Package, Briefcase,
   LogOut, Scissors, LayoutDashboard, Eye, EyeOff, Search, Bell,
   Menu, X, ExternalLink, TrendingDown, ShoppingCart,
-  Pencil, Trash2, Check, XCircle,
+  Pencil, Trash2, Check, XCircle, UserCog,
+  Phone, Mail, CreditCard, Clock, StickyNote, Info,
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +16,7 @@ import { normalizeAuthEmail } from "@/lib/auth/normalizeEmail";
 import { AdminServicesPanel } from "@/components/admin/AdminServicesPanel";
 import { AdminProductsPanel } from "@/components/admin/AdminProductsPanel";
 import { AdminCareersPanel } from "@/components/admin/AdminCareersPanel";
+import { AdminUsersPanel } from "@/components/admin/AdminUsersPanel";
 import { formatCurrency, cn } from "@/lib/utils";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
@@ -22,7 +24,7 @@ import toast from "react-hot-toast";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Screen  = "login" | "checking" | "dashboard";
-type NavItem = "Overview" | "Services" | "Shop" | "Careers";
+type NavItem = "Overview" | "Services" | "Shop" | "Careers" | "Users";
 
 type Appointment = {
   id: string;
@@ -31,6 +33,13 @@ type Appointment = {
   time: string;
   status: string;
   amount: number;
+  // extended fields
+  paymentStatus: string;
+  depositPaid: number;
+  phone: string;
+  email: string;
+  customerNotes: string;
+  endTime: string;
 };
 type EditingAppt = { id: string; serviceName: string; client: string; time: string; status: string; amount: number };
 
@@ -126,6 +135,10 @@ export default function AdminPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const canManage = role === "admin" || role === "manager";
+  const isAdmin   = role === "admin";
+
+  // Booking details drawer
+  const [detailAppt, setDetailAppt] = useState<Appointment | null>(null);
 
   type NavDef = { icon: React.ElementType; label: NavItem; restricted: boolean };
   const NAV_ITEMS: NavDef[] = [
@@ -133,6 +146,7 @@ export default function AdminPage() {
     { icon: Scissors,        label: "Services", restricted: !canManage },
     { icon: Package,         label: "Shop",     restricted: !canManage },
     { icon: Briefcase,       label: "Careers",  restricted: !canManage },
+    { icon: UserCog,         label: "Users",    restricted: !isAdmin   },
   ];
   const visibleNav = NAV_ITEMS.filter((n) => !n.restricted);
 
@@ -165,12 +179,26 @@ export default function AdminPage() {
     .map(([hour, count]) => ({ hour, count }))
     .sort((a, b) => Number.parseInt(a.hour, 10) - Number.parseInt(b.hour, 10));
 
+  /** Parse [meta:channel=sms&name=X&phone=Y&email=Z] from notes field */
+  const parseMeta = (notes: string): { name: string; phone: string; email: string; channel: string; cleanNotes: string } => {
+    const match = notes?.match(/^\[meta:([^\]]+)\]\s*/);
+    if (!match) return { name: "", phone: "", email: "", channel: "", cleanNotes: notes || "" };
+    const p = new URLSearchParams(match[1]);
+    return {
+      name:       p.get("name")    || "",
+      phone:      p.get("phone")   || "",
+      email:      p.get("email")   || "",
+      channel:    p.get("channel") || "",
+      cleanNotes: notes.slice(match[0].length).trim(),
+    };
+  };
+
   const loadAppointments = async () => {
     setAppointmentsLoading(true);
     const sb = createClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (sb.from("appointments") as any)
-      .select("id, start_time, status, total_price, services(name), users:customer_id(full_name)")
+      .select("id, start_time, end_time, status, total_price, payment_status, deposit_paid, notes, services(name), users:customer_id(full_name, email, phone)")
       .order("start_time", { ascending: false })
       .limit(200);
 
@@ -183,14 +211,21 @@ export default function AdminPage() {
 
     const mapped: Appointment[] = ((data as Array<Record<string, unknown>>) || []).map((row) => {
       const service = row.services as { name?: string } | null;
-      const user = row.users as { full_name?: string } | null;
+      const user    = row.users   as { full_name?: string; email?: string; phone?: string } | null;
+      const meta    = parseMeta(String(row.notes ?? ""));
       return {
-        id: String(row.id ?? ""),
-        serviceName: service?.name || "Service",
-        client: user?.full_name || "Client",
-        time: String(row.start_time ?? new Date().toISOString()),
-        status: String(row.status ?? "pending"),
-        amount: Number(row.total_price ?? 0),
+        id:            String(row.id ?? ""),
+        serviceName:   service?.name || "Service",
+        client:        user?.full_name || meta.name || "Client",
+        time:          String(row.start_time ?? new Date().toISOString()),
+        endTime:       String(row.end_time   ?? ""),
+        status:        String(row.status     ?? "pending"),
+        amount:        Number(row.total_price ?? 0),
+        paymentStatus: String(row.payment_status ?? "unpaid"),
+        depositPaid:   Number(row.deposit_paid   ?? 0),
+        phone:         user?.phone  || meta.phone  || "",
+        email:         user?.email  || meta.email  || "",
+        customerNotes: meta.cleanNotes,
       };
     });
     setAppointments(mapped);
@@ -721,6 +756,13 @@ export default function AdminPage() {
                                     ) : (
                                       <div style={{ display: "flex", gap: 6 }}>
                                         <button
+                                          onClick={() => setDetailAppt(appt)}
+                                          style={{ width: 30, height: 30, borderRadius: 7, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)", color: "#60a5fa", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                                          title="View full details"
+                                        >
+                                          <Info size={12} />
+                                        </button>
+                                        <button
                                           onClick={() => { setEditingId(appt.id); setEditDraft({ ...appt }); }}
                                           style={{ width: 30, height: 30, borderRadius: 7, background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.2)", color: "#d4af37", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.15s" }}
                                           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(212,175,55,0.22)"; }}
@@ -754,12 +796,158 @@ export default function AdminPage() {
                 {activeNav === "Services" && canManage && <AdminServicesPanel />}
                 {activeNav === "Shop"     && canManage && <AdminProductsPanel />}
                 {activeNav === "Careers"  && canManage && <AdminCareersPanel />}
+                {activeNav === "Users"    && isAdmin   && <AdminUsersPanel />}
 
               </motion.div>
             </AnimatePresence>
           </div>
         </main>
       </div>
+
+      {/* ── Booking Detail Drawer ───────────────────────────────────────────── */}
+      <AnimatePresence>
+        {detailAppt && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setDetailAppt(null)}
+              style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+            />
+            {/* Drawer */}
+            <motion.aside
+              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 320 }}
+              style={{
+                position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 70,
+                width: "min(480px, 100vw)", background: "#111113",
+                borderLeft: "1px solid rgba(255,255,255,0.07)",
+                display: "flex", flexDirection: "column", overflowY: "auto",
+              }}
+            >
+              {/* Drawer header */}
+              <div style={{ padding: "20px 24px", borderBottom: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "#b22222", marginBottom: 2 }}>Booking Details</p>
+                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.28)", fontFamily: "monospace" }}>#{detailAppt.id.slice(0, 8).toUpperCase()}</p>
+                </div>
+                <button onClick={() => setDetailAppt(null)}
+                  style={{ width: 34, height: 34, borderRadius: 9, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 20 }}>
+
+                {/* Status row */}
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <StatusPill status={detailAppt.status} />
+                  {/* Payment status pill */}
+                  {(() => {
+                    const ps = detailAppt.paymentStatus;
+                    const psColors: Record<string, { bg: string; text: string }> = {
+                      deposit_paid: { bg: "rgba(52,211,153,0.12)", text: "#34d399" },
+                      paid:         { bg: "rgba(52,211,153,0.12)", text: "#34d399" },
+                      unpaid:       { bg: "rgba(251,191,36,0.12)", text: "#fbbf24" },
+                      refunded:     { bg: "rgba(96,165,250,0.12)", text: "#60a5fa" },
+                    };
+                    const c = psColors[ps] ?? { bg: "rgba(255,255,255,0.06)", text: "rgba(255,255,255,0.35)" };
+                    return (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: c.bg, color: c.text, borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>
+                        <CreditCard size={10} />
+                        <span style={{ textTransform: "capitalize" }}>{ps.replace("_", " ")}</span>
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                {/* Service & time */}
+                <div style={{ background: "#18181b", borderRadius: 14, padding: "18px 20px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 14 }}>Appointment</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <DetailRow icon={<Scissors size={13} />} label="Service" value={detailAppt.serviceName} />
+                    <DetailRow icon={<Calendar size={13} />} label="Date" value={format(new Date(detailAppt.time), "EEEE, d MMMM yyyy")} />
+                    <DetailRow icon={<Clock size={13} />} label="Time"
+                      value={`${format(new Date(detailAppt.time), "h:mm a")}${detailAppt.endTime ? ` → ${format(new Date(detailAppt.endTime), "h:mm a")}` : ""}`}
+                    />
+                    <DetailRow icon={<DollarSign size={13} />} label="Total Price" value={formatCurrency(detailAppt.amount)} />
+                    <DetailRow icon={<CreditCard size={13} />} label="Deposit Paid"
+                      value={detailAppt.depositPaid > 0 ? formatCurrency(detailAppt.depositPaid) : "Not yet paid"}
+                      valueColor={detailAppt.depositPaid > 0 ? "#34d399" : "#fbbf24"}
+                    />
+                  </div>
+                </div>
+
+                {/* Client info */}
+                <div style={{ background: "#18181b", borderRadius: 14, padding: "18px 20px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 14 }}>Client</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <DetailRow icon={<Users size={13} />} label="Name" value={detailAppt.client || "—"} />
+                    {detailAppt.phone && (
+                      <DetailRow icon={<Phone size={13} />} label="Phone" value={detailAppt.phone}
+                        action={<a href={`tel:${detailAppt.phone}`} style={{ color: "#60a5fa", fontSize: 10 }}>Call</a>}
+                      />
+                    )}
+                    {detailAppt.email && (
+                      <DetailRow icon={<Mail size={13} />} label="Email" value={detailAppt.email}
+                        action={<a href={`mailto:${detailAppt.email}`} style={{ color: "#60a5fa", fontSize: 10 }}>Email</a>}
+                      />
+                    )}
+                    {!detailAppt.phone && !detailAppt.email && (
+                      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", fontStyle: "italic" }}>No contact info on file</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Notes */}
+                {detailAppt.customerNotes && (
+                  <div style={{ background: "#18181b", borderRadius: 14, padding: "18px 20px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
+                      <StickyNote size={13} style={{ color: "rgba(255,255,255,0.25)" }} />
+                      <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)" }}>Notes</p>
+                    </div>
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.65 }}>{detailAppt.customerNotes}</p>
+                  </div>
+                )}
+
+                {/* Actions */}
+                {canManage && (
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button
+                      onClick={() => { setEditingId(detailAppt.id); setEditDraft({ ...detailAppt }); setDetailAppt(null); }}
+                      style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(212,175,55,0.12)", border: "1px solid rgba(212,175,55,0.25)", color: "#d4af37", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      <Pencil size={13} /> Edit Booking
+                    </button>
+                    <button
+                      onClick={() => { setDeleteConfirmId(detailAppt.id); setDetailAppt(null); }}
+                      style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      <Trash2 size={13} /> Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Detail row helper ────────────────────────────────────────────────────────
+
+function DetailRow({ icon, label, value, valueColor, action }: {
+  icon: React.ReactNode; label: string; value: string;
+  valueColor?: string; action?: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+      <span style={{ color: "rgba(255,255,255,0.25)", marginTop: 1, flexShrink: 0 }}>{icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)", marginBottom: 2 }}>{label}</p>
+        <p style={{ fontSize: 13, color: valueColor || "#fff", fontWeight: 500, wordBreak: "break-word" }}>{value}</p>
+      </div>
+      {action && <span style={{ flexShrink: 0, marginTop: 14 }}>{action}</span>}
     </div>
   );
 }

@@ -166,19 +166,25 @@ async function initiateHubtelPayment({
 }): Promise<{ paymentUrl: string | null; hubtelError: string | null }> {
   const clientId        = process.env.HUBTEL_CLIENT_ID;
   const clientSecret    = process.env.HUBTEL_CLIENT_SECRET;
+  // IMPORTANT: This must be the short numeric Hubtel merchant account ID (e.g. "11684"),
+  // NOT a phone number. Find it in your Hubtel merchant portal → Settings → Account.
   const merchantAccount = process.env.HUBTEL_MERCHANT_ACCOUNT_NUMBER;
 
   if (!clientId || !clientSecret || clientId === "your_hubtel_client_id") {
     return { paymentUrl: null, hubtelError: "Hubtel credentials not configured" };
   }
+  if (!merchantAccount) {
+    return { paymentUrl: null, hubtelError: "HUBTEL_MERCHANT_ACCOUNT_NUMBER not set" };
+  }
 
   try {
-    // Hubtel Web Checkout SDK approach — build redirect URL directly.
+    // We use the Hubtel Web Checkout SDK redirect approach (unified-pay.hubtel.com/pay).
+    // The payproxyapi.hubtel.com/items/initiate endpoint requires IP whitelisting —
+    // incompatible with Vercel's dynamic serverless IPs. The redirect URL approach
+    // requires no server-to-server call and has no IP restriction.
     // Docs: https://github.com/hubtel/hubtel-web-merchant-checkout-sdk
-    // No backend API call needed; credentials passed as basicAuth query param.
-    const basicAuth      = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-    const merchantId     = (merchantAccount || "").replace(/^\+/, ""); // strip leading +
-    const msisdn         = (customerPhone   || "").replace(/^\+/, ""); // 233XXXXXXXXX
+    const basicAuth  = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+    const msisdn     = (customerPhone || "").replace(/^\+/, ""); // 233XXXXXXXXX (no +)
 
     const params = new URLSearchParams({
       amount:               String(amount),
@@ -186,13 +192,13 @@ async function initiateHubtelPayment({
       customerPhoneNumber:  msisdn,
       clientReference,
       callbackUrl,
-      merchantAccount:      merchantId,
+      merchantAccount,      // short numeric ID from Hubtel portal, e.g. "11684"
       basicAuth,
       integrationType:      "External",
     });
 
     const paymentUrl = `https://unified-pay.hubtel.com/pay?${params.toString()}`;
-    console.log("[Hubtel] Checkout URL built:", paymentUrl.replace(basicAuth, "***"));
+    console.log("[Hubtel] Checkout URL built (merchantAccount:", merchantAccount, ")");
     return { paymentUrl, hubtelError: null };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown Hubtel error";
