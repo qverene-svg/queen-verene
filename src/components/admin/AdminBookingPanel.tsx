@@ -37,7 +37,7 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function AdminBookingPanel() {
+export function AdminBookingPanel({ onSuccess }: { onSuccess?: () => void }) {
   const [services,  setServices]  = useState<Service[]>([]);
   const [staff,     setStaff]     = useState<StaffMember[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -123,6 +123,8 @@ export function AdminBookingPanel() {
 
     setSuccess(true);
     setSubmitting(false);
+    // Notify parent immediately so Overview refreshes in background
+    onSuccess?.();
     setTimeout(() => {
       // Reset form
       setCustomerName(""); setCustomerPhone(""); setCustomerEmail("");

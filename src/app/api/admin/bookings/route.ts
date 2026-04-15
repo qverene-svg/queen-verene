@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
-import { formatPhone } from "@/lib/utils";
 import { addMinutes } from "date-fns";
 
 /**
@@ -8,10 +7,15 @@ import { addMinutes } from "date-fns";
  * Creates a confirmed booking without payment.
  * Sends a confirmation SMS or email to the customer immediately.
  * Only accessible by admin or manager roles.
+ *
+ * NOTE — Email sender:
+ *   RESEND_FROM_EMAIL must be an address on a domain you have verified in the
+ *   Resend dashboard (https://resend.com/domains).  Gmail / Yahoo / Hotmail
+ *   addresses are rejected by Resend.  Use e.g. "hello@yourdomain.com".
  */
 export async function POST(req: NextRequest) {
   try {
-    // Auth check
+    // ── Auth check ──────────────────────────────────────────────────────────
     const userClient = await createClient();
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
@@ -49,7 +53,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Phone number or email is required" }, { status: 400 });
     }
 
-    // Determine channel
+    // ── Determine notification channel ──────────────────────────────────────
     const hasPhone = Boolean(customerPhone?.trim());
     const hasEmail = Boolean(customerEmail?.trim());
     const channel: "sms" | "email" =
@@ -66,18 +70,19 @@ export async function POST(req: NextRequest) {
     }).toString()}] `;
     const notesWithMeta = metaPrefix + (notes || "");
 
-    // Look up customer in users table (or leave null for walk-ins)
+    // ── Look up customer in users table (null for walk-ins) ─────────────────
     let customerId: string | null = null;
     if (customerEmail) {
       const { data: existingUser } = await db.from("users").select("id").eq("email", customerEmail).single();
       customerId = existingUser?.id || null;
     }
 
-    // Build times
+    // ── Build start / end times ─────────────────────────────────────────────
     const startTime = new Date(`${date}T${time}:00`);
     const endTime   = addMinutes(startTime, serviceDuration || 60);
 
-    // Insert appointment — status "confirmed", payment "unpaid" (admin override, no deposit required)
+    // ── Insert appointment ──────────────────────────────────────────────────
+    // status: "confirmed" — no payment required for admin-created bookings
     const appointmentId = crypto.randomUUID();
     const { data: appointment, error } = await db
       .from("appointments")
@@ -88,7 +93,7 @@ export async function POST(req: NextRequest) {
         service_id:     serviceId,
         start_time:     startTime.toISOString(),
         end_time:       endTime.toISOString(),
-        status:         "confirmed",      // immediately confirmed — no payment required
+        status:         "confirmed",
         payment_status: "unpaid",
         total_price:    servicePrice || 0,
         deposit_paid:   0,
@@ -102,34 +107,50 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Database error: ${error.message}` }, { status: 500 });
     }
 
-    // ── Send confirmation notification ─────────────────────────────────────────
+    // ── Send confirmation notification (awaited so errors surface in logs) ──
     const apptDate = startTime.toLocaleString("en-GH", {
       weekday: "long", month: "long", day: "numeric",
       hour: "2-digit", minute: "2-digit",
     });
-    const confirmMsg = `Hi ${customerName}! Your Verene appointment for ${serviceName || "Beauty Service"} on ${apptDate} has been confirmed. We look forward to seeing you!`;
+    const confirmMsg =
+      `Hi ${customerName}! Your Verene appointment for ${serviceName || "Beauty Service"} on ${apptDate} has been confirmed. We look forward to seeing you!`;
+
+    let notifStatus = "not_sent";
 
     if (channel === "sms" && customerPhone) {
-      import("@/lib/hubtelSms")
-        .then(({ sendHubtelSms }) => sendHubtelSms(formatPhone(customerPhone), confirmMsg))
-        .catch((e) => console.error("[Admin Booking] SMS failed:", e));
+      try {
+        const { sendHubtelSms } = await import("@/lib/hubtelSms");
+        const sent = await sendHubtelSms(customerPhone, confirmMsg);
+        notifStatus = sent ? "sms_sent" : "sms_failed";
+        if (!sent) console.error("[Admin Booking] SMS was not delivered — check Hubtel credentials & number format.");
+      } catch (e) {
+        console.error("[Admin Booking] SMS exception:", e);
+        notifStatus = "sms_error";
+      }
     } else if (channel === "email" && customerEmail) {
-      sendAdminBookingEmail({
-        customerName,
-        customerEmail,
-        serviceName:   serviceName || "Beauty Service",
-        startTime:     startTime.toISOString(),
-      }).catch((e) => console.error("[Admin Booking] Email failed:", e));
+      try {
+        await sendAdminBookingEmail({
+          customerName,
+          customerEmail,
+          serviceName: serviceName || "Beauty Service",
+          startTime:   startTime.toISOString(),
+        });
+        notifStatus = "email_sent";
+      } catch (e) {
+        console.error("[Admin Booking] Email exception:", e);
+        notifStatus = "email_error";
+      }
     }
 
-    return NextResponse.json({ success: true, appointmentId: appointment.id });
+    console.log(`[Admin Booking] Created ${appointmentId} — notification: ${notifStatus}`);
+    return NextResponse.json({ success: true, appointmentId: appointment.id, notifStatus });
   } catch (err) {
     console.error("[Admin Booking]", err);
     return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
   }
 }
 
-// ── Confirmation email (no payment required) ──────────────────────────────────
+// ── Confirmation email ────────────────────────────────────────────────────────
 
 async function sendAdminBookingEmail({
   customerName, customerEmail, serviceName, startTime,
@@ -138,7 +159,23 @@ async function sendAdminBookingEmail({
   serviceName: string; startTime: string;
 }) {
   const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey || resendKey === "your_resend_api_key") return;
+  if (!resendKey || resendKey === "your_resend_api_key") {
+    console.warn("[Admin Booking] RESEND_API_KEY not configured — skipping email.");
+    return;
+  }
+
+  // Resend requires the sender to be on a verified domain.
+  // Gmail / Yahoo / Hotmail addresses will be rejected.
+  const fromEmail = process.env.RESEND_FROM_EMAIL ?? "hello@verene.com";
+  const fromDomain = fromEmail.split("@")[1] ?? "";
+  const freeProviders = ["gmail.com","yahoo.com","hotmail.com","outlook.com","icloud.com"];
+  if (freeProviders.includes(fromDomain.toLowerCase())) {
+    console.error(
+      `[Admin Booking] Cannot send via Resend from "${fromEmail}". ` +
+      "Add a verified custom domain in https://resend.com/domains and update RESEND_FROM_EMAIL."
+    );
+    return;
+  }
 
   const date = new Date(startTime).toLocaleString("en-GH", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
@@ -148,10 +185,10 @@ async function sendAdminBookingEmail({
   const { Resend } = await import("resend");
   const resend = new Resend(resendKey);
 
-  await resend.emails.send({
-    from:    process.env.RESEND_FROM_EMAIL ?? "hello@verene.com",
+  const { error } = await resend.emails.send({
+    from:    `Queen Verene <${fromEmail}>`,
     to:      customerEmail,
-    subject: `Your Verene Appointment is Confirmed ✨`,
+    subject: "Your Verene Appointment is Confirmed ✨",
     html: `
 <!DOCTYPE html>
 <html lang="en">
@@ -204,4 +241,8 @@ async function sendAdminBookingEmail({
 </body>
 </html>`,
   });
+
+  if (error) {
+    throw new Error(`Resend error: ${JSON.stringify(error)}`);
+  }
 }

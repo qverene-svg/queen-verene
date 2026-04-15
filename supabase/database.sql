@@ -107,6 +107,22 @@ CREATE TABLE IF NOT EXISTS public.appointments (
   created_at             TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Phone OTPs — temporary codes for passwordless phone login
+-- Accessed exclusively via the service-role admin client; no RLS required.
+-- Expired / used rows accumulate and should be purged periodically (see safety patches).
+CREATE TABLE IF NOT EXISTS public.phone_otps (
+  id         UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  phone      TEXT        NOT NULL,          -- normalised +233XXXXXXXXX
+  email      TEXT        NOT NULL,          -- the auth email linked to this phone
+  otp        TEXT        NOT NULL,          -- 6-digit code
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '10 minutes'),
+  used       BOOLEAN     NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ          DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_phone_otps_phone      ON public.phone_otps(phone);
+CREATE INDEX IF NOT EXISTS idx_phone_otps_expires_at ON public.phone_otps(expires_at);
+
 -- Products
 CREATE TABLE IF NOT EXISTS public.products (
   id           UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -428,3 +444,7 @@ BEGIN
     ALTER TABLE public.appointments ALTER COLUMN end_time SET NOT NULL;
   END IF;
 END $$;
+
+-- ── phone_otps: purge expired rows ───────────────────────────────────────────
+-- Safe to re-run; removes codes older than 1 hour to keep the table tidy.
+DELETE FROM public.phone_otps WHERE expires_at < NOW() - INTERVAL '1 hour';

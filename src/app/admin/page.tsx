@@ -864,7 +864,14 @@ export default function AdminPage() {
                 {activeNav === "Shop"     && canManage && <AdminProductsPanel />}
                 {activeNav === "Careers"  && canManage && <AdminCareersPanel />}
                 {activeNav === "Users"       && isAdmin   && <AdminUsersPanel />}
-                {activeNav === "New Booking" && canManage && <AdminBookingPanel />}
+                {activeNav === "New Booking" && canManage && (
+                  <AdminBookingPanel
+                    onSuccess={() => {
+                      loadAppointments();          // refresh Overview table
+                      setTimeout(() => setActiveNav("Overview"), 3200); // switch after success banner
+                    }}
+                  />
+                )}
 
               </motion.div>
             </AnimatePresence>
