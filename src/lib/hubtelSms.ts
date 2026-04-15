@@ -1,71 +1,41 @@
 /**
- * Hubtel Programmable SMS — booking confirmations & appointment reminders.
- * https://developers.hubtel.com/ (Messaging → Programmable SMS)
+ * Hubtel Programmable SMS
+ * Docs: https://developers.hubtel.com/docs/business/api_documentation/notification_apis/sms
  *
- * Env (server-only):
- *   HUBTEL_SMS_SENDER        — registered Sender ID, e.g. "VereneQueen"
- *   HUBTEL_SMS_AUTH_MODE     — "basic" (default) | "token"
+ * Env vars (server-only):
+ *   HUBTEL_SMS_CLIENT_ID      — SMS API client ID
+ *   HUBTEL_SMS_CLIENT_SECRET  — SMS API client secret
+ *   HUBTEL_SMS_SENDER         — Sender ID shown to recipient (max 11 chars, must be registered)
  *
- *   Basic mode (Hubtel v1 query-param API):
- *     HUBTEL_SMS_CLIENT_ID     — API client ID  (or falls back to HUBTEL_CLIENT_ID)
- *     HUBTEL_SMS_CLIENT_SECRET — API client secret (or falls back to HUBTEL_CLIENT_SECRET)
- *     HUBTEL_SMS_API_URL       — optional; base URL only, default https://sms.hubtel.com/v1/messages/send
+ * Falls back to HUBTEL_CLIENT_ID / HUBTEL_CLIENT_SECRET if the SMS-specific vars are absent.
  *
- *   Token mode (Bearer header, POST JSON):
- *     HUBTEL_SMS_API_TOKEN     — API token
- *     HUBTEL_SMS_TOKEN_PREFIX  — optional prefix, default "Bearer"
- *     HUBTEL_SMS_API_URL       — optional; default https://smsc.hubtel.com/v1/messages
+ * API behaviour (from Hubtel docs):
+ *   POST https://sms.hubtel.com/v1/messages/send
+ *   Authorization: Basic base64(clientId:clientSecret)
+ *   Body: { "From": "...", "To": "233XXXXXXXXX", "Content": "..." }
+ *
+ *   Success → HTTP 201, body { status: 0, ... }
+ *   Failure → HTTP 201 (or 4xx), body { status: <non-zero>, statusDescription: "..." }
+ *
+ *   Phone numbers MUST be in the format 233XXXXXXXXX (no leading +).
  */
 
-import { formatPhone } from "@/lib/utils";
+const SMS_ENDPOINT = "https://sms.hubtel.com/v1/messages/send";
 
-const DEFAULT_BASIC_API = "https://sms.hubtel.com/v1/messages/send";
-const DEFAULT_TOKEN_API  = "https://smsc.hubtel.com/v1/messages";
+interface HubtelSmsResponse {
+  status:            number;
+  statusDescription: string;
+  messageId?:        string;
+  rate?:             number;
+  networkId?:        string;
+}
 
-type SmsAuth =
-  | { mode: "token"; token: string; tokenPrefix: string }
-  | { mode: "basic"; clientId: string; clientSecret: string };
-
-function getSmsCredentials(): { from: string; baseUrl: string; auth: SmsAuth } | null {
-  const from = process.env.HUBTEL_SMS_SENDER?.trim();
-  if (!from) {
-    console.warn("[Hubtel SMS] HUBTEL_SMS_SENDER is not set.");
-    return null;
-  }
-
-  const authMode = (process.env.HUBTEL_SMS_AUTH_MODE?.trim().toLowerCase() || "basic") as "token" | "basic";
-
-  if (authMode === "token") {
-    const token = process.env.HUBTEL_SMS_API_TOKEN?.trim();
-    if (!token || token === "your_hubtel_sms_api_token") {
-      console.warn("[Hubtel SMS] HUBTEL_SMS_API_TOKEN is not set.");
-      return null;
-    }
-    const tokenPrefix = process.env.HUBTEL_SMS_TOKEN_PREFIX?.trim() || "Bearer";
-    // Strip any pre-filled query params from the URL — we build them ourselves
-    const rawUrl = process.env.HUBTEL_SMS_API_URL?.trim() || DEFAULT_TOKEN_API;
-    const baseUrl = rawUrl.split("?")[0];
-    return { from, baseUrl, auth: { mode: "token", token, tokenPrefix } };
-  }
-
-  // Basic mode
-  const clientId     = (process.env.HUBTEL_SMS_CLIENT_ID?.trim()     || process.env.HUBTEL_CLIENT_ID?.trim());
-  const clientSecret = (process.env.HUBTEL_SMS_CLIENT_SECRET?.trim() || process.env.HUBTEL_CLIENT_SECRET?.trim());
-
-  if (!clientId || !clientSecret) {
-    console.warn("[Hubtel SMS] HUBTEL_SMS_CLIENT_ID or HUBTEL_SMS_CLIENT_SECRET is not set.");
-    return null;
-  }
-  if (clientId === "your_hubtel_client_id" || clientSecret === "your_hubtel_client_secret") {
-    console.warn("[Hubtel SMS] Placeholder credentials detected — configure real values.");
-    return null;
-  }
-
-  // Strip any pre-filled query params (the env may have a full sample URL)
-  const rawUrl = process.env.HUBTEL_SMS_API_URL?.trim() || DEFAULT_BASIC_API;
-  const baseUrl = rawUrl.split("?")[0];
-
-  return { from, baseUrl, auth: { mode: "basic", clientId, clientSecret } };
+/** Normalise any Ghana phone number to Hubtel's required 233XXXXXXXXX format (no +). */
+function toHubtelPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("233")) return digits;          // already 233XXXXXXXXX
+  if (digits.startsWith("0"))   return "233" + digits.slice(1); // 0XXXXXXXXX → 233XXXXXXXXX
+  return "233" + digits;                                // bare 9-digit → 233XXXXXXXXX
 }
 
 /** Strip WhatsApp-style markup (*bold*, _italic_) for plain SMS. */
@@ -73,65 +43,84 @@ export function smsPlainText(text: string): string {
   return text.replace(/\*([^*]+)\*/g, "$1").replace(/_([^_]+)_/g, "$1");
 }
 
+function getCredentials(): { clientId: string; clientSecret: string; sender: string } | null {
+  const clientId     = process.env.HUBTEL_SMS_CLIENT_ID?.trim()
+                    || process.env.HUBTEL_CLIENT_ID?.trim();
+  const clientSecret = process.env.HUBTEL_SMS_CLIENT_SECRET?.trim()
+                    || process.env.HUBTEL_CLIENT_SECRET?.trim();
+  const sender       = process.env.HUBTEL_SMS_SENDER?.trim();
+
+  if (!clientId || !clientSecret) {
+    console.warn("[Hubtel SMS] Missing HUBTEL_SMS_CLIENT_ID or HUBTEL_SMS_CLIENT_SECRET");
+    return null;
+  }
+  if (!sender) {
+    console.warn("[Hubtel SMS] Missing HUBTEL_SMS_SENDER");
+    return null;
+  }
+  if (sender.length > 11) {
+    console.warn(`[Hubtel SMS] Sender ID "${sender}" exceeds 11 characters — Hubtel will reject it`);
+  }
+
+  return { clientId, clientSecret, sender };
+}
+
 /**
  * Send a single SMS via Hubtel.
- *
- * Basic mode → GET https://sms.hubtel.com/v1/messages/send?clientid=…&clientsecret=…&from=…&to=…&content=…
- * Token mode  → POST https://smsc.hubtel.com/v1/messages  (JSON body, Authorization: Bearer …)
+ * Returns true on confirmed delivery submission, false on any failure.
  */
 export async function sendHubtelSms(to: string, content: string): Promise<boolean> {
-  const cfg = getSmsCredentials();
-  if (!cfg) return false;
+  const creds = getCredentials();
+  if (!creds) return false;
 
-  const recipient    = formatPhone(to);
+  const recipient    = toHubtelPhone(to);
   const plainContent = smsPlainText(content);
+  const basicAuth    = Buffer.from(`${creds.clientId}:${creds.clientSecret}`).toString("base64");
 
-  console.log(`[Hubtel SMS] Sending to ${recipient} via ${cfg.auth.mode} mode…`);
+  console.log(`[Hubtel SMS] Sending to ${recipient} from "${creds.sender}"…`);
 
   try {
-    let res: Response;
-
-    if (cfg.auth.mode === "basic") {
-      // ── Hubtel v1 SMS: GET with query params ──────────────────────────────
-      const url = new URL(cfg.baseUrl);
-      url.searchParams.set("clientid",     cfg.auth.clientId);
-      url.searchParams.set("clientsecret", cfg.auth.clientSecret);
-      url.searchParams.set("from",         cfg.from);
-      url.searchParams.set("to",           recipient);
-      url.searchParams.set("content",      plainContent);
-
-      res = await fetch(url.toString(), {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      });
-    } else {
-      // ── Token mode: POST with JSON body + Authorization header ────────────
-      res = await fetch(cfg.baseUrl, {
-        method: "POST",
-        headers: {
-          Authorization:  `${cfg.auth.tokenPrefix} ${cfg.auth.token}`,
-          "Content-Type": "application/json",
-          Accept:         "application/json",
-        },
-        body: JSON.stringify({
-          From:    cfg.from,
-          To:      recipient,
-          Content: plainContent,
-        }),
-      });
-    }
+    const res = await fetch(SMS_ENDPOINT, {
+      method:  "POST",
+      headers: {
+        "Authorization": `Basic ${basicAuth}`,
+        "Content-Type":  "application/json",
+        "Accept":        "application/json",
+      },
+      body: JSON.stringify({
+        From:    creds.sender,
+        To:      recipient,
+        Content: plainContent,
+      }),
+    });
 
     const raw = await res.text();
 
+    // Hubtel returns 201 for both success AND some errors — must check JSON status field
+    let json: HubtelSmsResponse | null = null;
+    try { json = JSON.parse(raw); } catch { /* not JSON */ }
+
     if (!res.ok) {
-      console.error(`[Hubtel SMS] HTTP ${res.status}:`, raw);
+      console.error(`[Hubtel SMS] HTTP ${res.status}:`, raw.slice(0, 300));
       return false;
     }
 
-    console.log("[Hubtel SMS] ✓ Sent successfully:", raw.slice(0, 120));
+    if (json && json.status !== 0) {
+      // HTTP 201 but non-zero status = Hubtel-level error
+      console.error(
+        `[Hubtel SMS] Hubtel error status=${json.status}: ${json.statusDescription || raw.slice(0, 200)}`
+      );
+      // Helpful hints for common error codes
+      if (json.status === 1)  console.error("[Hubtel SMS] → Invalid destination number. Check the recipient's phone number.");
+      if (json.status === 2)  console.error("[Hubtel SMS] → Invalid source address. Ensure your Sender ID is registered & approved in the Hubtel console.");
+      if (json.status === 12) console.error("[Hubtel SMS] → Insufficient credit. Fund your Hubtel SMS wallet.");
+      return false;
+    }
+
+    console.log(`[Hubtel SMS] ✓ Submitted — messageId: ${json?.messageId}, rate: ${json?.rate}`);
     return true;
   } catch (err) {
-    console.error("[Hubtel SMS] Network error:", err);
+    console.error("[Hubtel SMS] Network/fetch error:", err);
     return false;
   }
 }
