@@ -7,7 +7,7 @@ import {
   Users, Calendar, TrendingUp, DollarSign, Package, Briefcase,
   LogOut, Scissors, LayoutDashboard, Eye, EyeOff, Search, Bell,
   Menu, X, ExternalLink, TrendingDown, ShoppingCart,
-  Pencil, Trash2, Check, XCircle, UserCog,
+  Pencil, Trash2, Check, XCircle, UserCog, CalendarPlus,
   Phone, Mail, CreditCard, Clock, StickyNote, Info, Send,
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
@@ -17,6 +17,7 @@ import { AdminServicesPanel } from "@/components/admin/AdminServicesPanel";
 import { AdminProductsPanel } from "@/components/admin/AdminProductsPanel";
 import { AdminCareersPanel } from "@/components/admin/AdminCareersPanel";
 import { AdminUsersPanel } from "@/components/admin/AdminUsersPanel";
+import { AdminBookingPanel } from "@/components/admin/AdminBookingPanel";
 import { formatCurrency, cn } from "@/lib/utils";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
@@ -24,7 +25,7 @@ import toast from "react-hot-toast";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Screen  = "login" | "checking" | "dashboard";
-type NavItem = "Overview" | "Services" | "Shop" | "Careers" | "Users";
+type NavItem = "Overview" | "Services" | "Shop" | "Careers" | "Users" | "New Booking";
 
 type Appointment = {
   id: string;
@@ -73,7 +74,7 @@ function KpiCard({ label, value, icon: Icon, delta, up }: {
 }) {
   return (
     <div style={{
-      background: "#ffffff", border: "1px solid rgba(0,0,0,0.07)", borderRadius: 16,
+      background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16,
       padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14,
       transition: "border-color 0.2s",
     }}
@@ -94,8 +95,8 @@ function KpiCard({ label, value, icon: Icon, delta, up }: {
         </span>
       </div>
       <div>
-        <p style={{ fontSize: 22, fontWeight: 700, color: "#0a0a0a", letterSpacing: "-0.02em", lineHeight: 1 }}>{value}</p>
-        <p style={{ fontSize: 12, color: "rgba(0,0,0,0.35)", marginTop: 4, fontWeight: 500 }}>{label}</p>
+        <p style={{ fontSize: 22, fontWeight: 700, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>{value}</p>
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 4, fontWeight: 500 }}>{label}</p>
       </div>
     </div>
   );
@@ -109,9 +110,9 @@ function ChartTooltip({ active, payload, label, formatter }: {
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: "#ffffff", border: "1px solid rgba(0,0,0,0.10)", borderRadius: 10, padding: "8px 12px", fontSize: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }}>
-      <p style={{ color: "rgba(0,0,0,0.35)", marginBottom: 4 }}>{label}</p>
-      <p style={{ color: "#0a0a0a", fontWeight: 600 }}>{formatter ? formatter(payload[0].value) : payload[0].value}</p>
+    <div style={{ background: "#18181b", border: "1px solid rgba(0,0,0,0.10)", borderRadius: 10, padding: "8px 12px", fontSize: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }}>
+      <p style={{ color: "rgba(255,255,255,0.35)", marginBottom: 4 }}>{label}</p>
+      <p style={{ color: "#fff", fontWeight: 600 }}>{formatter ? formatter(payload[0].value) : payload[0].value}</p>
     </div>
   );
 }
@@ -152,7 +153,8 @@ export default function AdminPage() {
     { icon: Scissors,        label: "Services", restricted: !canManage },
     { icon: Package,         label: "Shop",     restricted: !canManage },
     { icon: Briefcase,       label: "Careers",  restricted: !canManage },
-    { icon: UserCog,         label: "Users",    restricted: !isAdmin   },
+    { icon: UserCog,         label: "Users",       restricted: !isAdmin   },
+    { icon: CalendarPlus,    label: "New Booking", restricted: !canManage },
   ];
   const visibleNav = NAV_ITEMS.filter((n) => !n.restricted);
 
@@ -428,7 +430,7 @@ export default function AdminPage() {
   // ── Dashboard ─────────────────────────────────────────────────────────────
   return (
     // Root: full-viewport flex row — ALL structural styles inline to bypass Tailwind cache
-    <div style={{ display: "flex", height: "100vh", width: "100%", overflow: "hidden", background: "#f8f8fa", color: "#0a0a0a", fontFamily: "var(--font-montserrat),sans-serif" }}>
+    <div style={{ display: "flex", height: "100vh", width: "100%", overflow: "hidden", background: "#0f0f11", color: "#fff", fontFamily: "var(--font-montserrat),sans-serif" }}>
 
       {/* ── Mobile backdrop ── */}
       <AnimatePresence>
@@ -443,8 +445,8 @@ export default function AdminPage() {
       <motion.aside
         initial={{ x: -260 }} animate={{ x: 0 }} transition={{ type: "spring", damping: 30, stiffness: 320 }}
         style={{
-          width: 240, flexShrink: 0, background: "#f2f2f5",
-          borderRight: "1px solid rgba(0,0,0,0.08)",
+          width: 240, flexShrink: 0, background: "#111113",
+          borderRight: "1px solid rgba(255,255,255,0.06)",
           display: "flex", flexDirection: "column", overflow: "hidden",
         }}
         className={cn(
@@ -453,14 +455,14 @@ export default function AdminPage() {
         )}
       >
         {/* Logo row */}
-        <div style={{ height: 64, display: "flex", alignItems: "center", padding: "0 20px", borderBottom: "1px solid rgba(0,0,0,0.08)", flexShrink: 0 }}>
+        <div style={{ height: 64, display: "flex", alignItems: "center", padding: "0 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
           <BrandLogo size={30} withWordmark />
         </div>
 
         {/* Workspace */}
         <div style={{ padding: "20px 20px 8px" }}>
-          <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.25em", textTransform: "uppercase", color: "rgba(0,0,0,0.25)" }}>Workspace</p>
-          <p style={{ color: "rgba(0,0,0,0.45)", fontSize: 12, marginTop: 3 }}>Queen Verene Studio</p>
+          <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.25em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)" }}>Workspace</p>
+          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, marginTop: 3 }}>Queen Verene Studio</p>
         </div>
 
         {/* Nav items */}
@@ -489,11 +491,11 @@ export default function AdminPage() {
         </nav>
 
         {/* Quick links */}
-        <div style={{ padding: "12px 20px 20px", borderTop: "1px solid rgba(0,0,0,0.08)" }}>
-          <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(0,0,0,0.25)", marginBottom: 10 }}>Quick Links</p>
+        <div style={{ padding: "12px 20px 20px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 10 }}>Quick Links</p>
           {[{ href: "/", label: "View Site" }, { href: "/dashboard", label: "Client Portal" }].map((l) => (
             <Link key={l.href} href={l.href}
-              style={{ display: "flex", alignItems: "center", gap: 7, color: "rgba(0,0,0,0.35)", fontSize: 12, padding: "5px 0", textDecoration: "none", transition: "color 0.18s" }}
+              style={{ display: "flex", alignItems: "center", gap: 7, color: "rgba(255,255,255,0.35)", fontSize: 12, padding: "5px 0", textDecoration: "none", transition: "color 0.18s" }}
               className="hover:!text-black/65">
               <ExternalLink size={11} />{l.label}
             </Link>
@@ -508,23 +510,23 @@ export default function AdminPage() {
         <motion.header
           initial={{ y: -64 }} animate={{ y: 0 }} transition={{ type: "spring", damping: 30, stiffness: 320 }}
           style={{
-            height: 64, flexShrink: 0, background: "#f2f2f5",
-            borderBottom: "1px solid rgba(0,0,0,0.08)",
+            height: 64, flexShrink: 0, background: "#111113",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
             display: "flex", alignItems: "center", gap: 12, padding: "0 24px",
           }}
         >
           {/* Mobile hamburger */}
           <button type="button" onClick={() => setSideOpen(!sideOpen)} aria-label="Toggle sidebar"
-            style={{ display: "none", padding: 6, background: "none", border: "none", color: "rgba(0,0,0,0.45)", cursor: "pointer", borderRadius: 8 }}
+            style={{ display: "none", padding: 6, background: "none", border: "none", color: "rgba(255,255,255,0.45)", cursor: "pointer", borderRadius: 8 }}
             className="max-lg:!flex">
             {sideOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
           {/* Search bar */}
           <div style={{ position: "relative", maxWidth: 280, width: "100%", display: "flex" }}>
-            <Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "rgba(0,0,0,0.28)", pointerEvents: "none" }} />
+            <Search size={13} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.28)", pointerEvents: "none" }} />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…"
-              style={{ width: "100%", paddingLeft: 32, paddingRight: 12, paddingTop: 8, paddingBottom: 8, borderRadius: 10, background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.07)", color: "rgba(0,0,0,0.8)", fontSize: 12, outline: "none", boxSizing: "border-box" }}
+              style={{ width: "100%", paddingLeft: 32, paddingRight: 12, paddingTop: 8, paddingBottom: 8, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.8)", fontSize: 12, outline: "none", boxSizing: "border-box" }}
               className="max-sm:hidden"
             />
           </div>
@@ -535,7 +537,7 @@ export default function AdminPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {/* Bell */}
             <button type="button" aria-label="Notifications"
-              style={{ width: 34, height: 34, borderRadius: 9, border: "1px solid rgba(0,0,0,0.07)", background: "rgba(0,0,0,0.03)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "rgba(0,0,0,0.35)", transition: "all 0.18s" }}
+              style={{ width: 34, height: 34, borderRadius: 9, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "rgba(255,255,255,0.35)", transition: "all 0.18s" }}
               className="hover:!text-black hover:!border-black/20">
               <Bell size={15} />
             </button>
@@ -545,8 +547,8 @@ export default function AdminPage() {
               fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em",
               padding: "3px 10px", borderRadius: 999, border: "1px solid",
               ...(role === "admin"   ? { borderColor: "rgba(178,34,34,0.4)",   background: "rgba(178,34,34,0.1)",   color: "#b22222" } :
-                 role === "manager" ? { borderColor: "rgba(212,175,55,0.4)",   background: "rgba(212,175,55,0.1)",  color: "#b8941a" } :
-                                      { borderColor: "rgba(0,0,0,0.10)",       background: "rgba(0,0,0,0.04)",      color: "rgba(0,0,0,0.45)" }),
+                 role === "manager" ? { borderColor: "rgba(212,175,55,0.4)",   background: "rgba(212,175,55,0.1)",  color: "#d4af37" } :
+                                      { borderColor: "rgba(0,0,0,0.10)",       background: "rgba(255,255,255,0.05)",      color: "rgba(255,255,255,0.45)" }),
             }}
               className="max-sm:hidden"
             >
@@ -560,7 +562,7 @@ export default function AdminPage() {
 
             {/* Sign out */}
             <button type="button" onClick={handleLogout}
-              style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", color: "rgba(0,0,0,0.35)", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", transition: "color 0.18s" }}
+              style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", transition: "color 0.18s" }}
               className="hover:!text-black">
               <LogOut size={13} />
               <span className="max-sm:hidden">Sign out</span>
@@ -569,7 +571,7 @@ export default function AdminPage() {
         </motion.header>
 
         {/* ── Scrollable main ── */}
-        <main style={{ flex: 1, overflowY: "auto", background: "#f8f8fa" }}>
+        <main style={{ flex: 1, overflowY: "auto", background: "#0f0f11" }}>
           <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 28px 48px" }}>
             <AnimatePresence mode="wait">
               <motion.div
@@ -588,9 +590,9 @@ export default function AdminPage() {
                     <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                       <div>
                         <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.28em", textTransform: "uppercase", color: "#b22222", marginBottom: 4 }}>Admin Panel</p>
-                        <h1 style={{ fontFamily: "var(--font-playfair),'Playfair Display',serif", fontSize: 28, color: "#0a0a0a", margin: 0 }}>Business Overview</h1>
+                        <h1 style={{ fontFamily: "var(--font-playfair),'Playfair Display',serif", fontSize: 28, color: "#fff", margin: 0 }}>Business Overview</h1>
                       </div>
-                      <p style={{ fontSize: 12, color: "rgba(0,0,0,0.28)" }}>
+                      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.28)" }}>
                         {new Date().toLocaleDateString("en-GH", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                       </p>
                     </div>
@@ -614,11 +616,11 @@ export default function AdminPage() {
                       <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 20 }} className="max-lg:!grid-cols-1">
                         {/* Revenue chart */}
                         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}
-                          style={{ background: "#ffffff", border: "1px solid rgba(0,0,0,0.07)", borderRadius: 16, padding: "22px 24px" }}>
+                          style={{ background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "22px 24px" }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
                             <div>
-                              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(0,0,0,0.28)" }}>Revenue</p>
-                              <p style={{ fontSize: 15, fontWeight: 600, color: "#0a0a0a", marginTop: 3 }}>Monthly Revenue</p>
+                              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)" }}>Revenue</p>
+                              <p style={{ fontSize: 15, fontWeight: 600, color: "#fff", marginTop: 3 }}>Monthly Revenue</p>
                             </div>
                             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: "#34d399", background: "rgba(52,211,153,0.1)", borderRadius: 999, padding: "3px 10px" }}>
                               <TrendingUp size={10} /> {activeBookings} active
@@ -643,9 +645,9 @@ export default function AdminPage() {
 
                         {/* Peak hours chart */}
                         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.36 }}
-                          style={{ background: "#ffffff", border: "1px solid rgba(0,0,0,0.07)", borderRadius: 16, padding: "22px 24px" }}>
-                          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(0,0,0,0.28)" }}>Bookings</p>
-                          <p style={{ fontSize: 15, fontWeight: 600, color: "#0a0a0a", marginTop: 3, marginBottom: 20 }}>Peak Hours</p>
+                          style={{ background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "22px 24px" }}>
+                          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)" }}>Bookings</p>
+                          <p style={{ fontSize: 15, fontWeight: 600, color: "#fff", marginTop: 3, marginBottom: 20 }}>Peak Hours</p>
                           <Recharts.ResponsiveContainer width="100%" height={190}>
                             <Recharts.BarChart data={peakHours} barSize={10}>
                               <Recharts.CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
@@ -661,16 +663,16 @@ export default function AdminPage() {
 
                     {/* Bookings table */}
                     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.44 }}
-                      style={{ background: "#ffffff", border: "1px solid rgba(0,0,0,0.07)", borderRadius: 16, overflow: "hidden" }}>
+                      style={{ background: "#18181b", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, overflow: "hidden" }}>
                       {/* Table header */}
-                      <div style={{ padding: "18px 24px", borderBottom: "1px solid rgba(0,0,0,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                      <div style={{ padding: "18px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(0,0,0,0.28)" }}>
+                          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)" }}>
                             {role === "staff" ? "Your Appointments" : "Bookings"}
                           </p>
-                          <p style={{ fontSize: 15, fontWeight: 600, color: "#0a0a0a", marginTop: 3 }}>Recent Bookings</p>
+                          <p style={{ fontSize: 15, fontWeight: 600, color: "#fff", marginTop: 3 }}>Recent Bookings</p>
                         </div>
-                        <span style={{ fontSize: 11, color: "rgba(0,0,0,0.25)", fontStyle: "italic" }}>
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontStyle: "italic" }}>
                           {appointmentsLoading ? "Loading live bookings..." : `${appointments.length} live booking(s)`}
                         </span>
                       </div>
@@ -679,9 +681,9 @@ export default function AdminPage() {
                       <div style={{ overflowX: "auto" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                           <thead>
-                            <tr style={{ borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
+                            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                               {["ID", "Service", "Client", "Date & Time", "Status", "Amount", "Actions"].map((h) => (
-                                <th key={h} style={{ padding: "12px 20px", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(0,0,0,0.28)", whiteSpace: "nowrap" }}>{h}</th>
+                                <th key={h} style={{ padding: "12px 20px", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", whiteSpace: "nowrap" }}>{h}</th>
                               ))}
                             </tr>
                           </thead>
@@ -697,8 +699,8 @@ export default function AdminPage() {
                                   value={val}
                                   onChange={(e) => setEditDraft((d) => d ? { ...d, [field]: e.target.value } : d)}
                                   style={{
-                                    background: "rgba(0,0,0,0.04)", border: "1px solid rgba(212,175,55,0.4)",
-                                    borderRadius: 6, color: "#0a0a0a", fontSize: 12, padding: "4px 8px",
+                                    background: "rgba(255,255,255,0.05)", border: "1px solid rgba(212,175,55,0.4)",
+                                    borderRadius: 6, color: "#fff", fontSize: 12, padding: "4px 8px",
                                     outline: "none", width: "100%", minWidth: 80,
                                   }}
                                 />
@@ -712,20 +714,20 @@ export default function AdminPage() {
                                     transition: "background 0.15s",
                                   }}
                                 >
-                                  <td style={{ padding: "12px 20px", fontFamily: "monospace", fontSize: 11, color: "rgba(0,0,0,0.28)", whiteSpace: "nowrap" }}>{appt.id}</td>
+                                  <td style={{ padding: "12px 20px", fontFamily: "monospace", fontSize: 11, color: "rgba(255,255,255,0.28)", whiteSpace: "nowrap" }}>{appt.id}</td>
 
                                   {/* Service */}
-                                  <td style={{ padding: "12px 20px", fontWeight: 600, color: "#0a0a0a", whiteSpace: "nowrap", maxWidth: 160 }}>
+                                  <td style={{ padding: "12px 20px", fontWeight: 600, color: "#fff", whiteSpace: "nowrap", maxWidth: 160 }}>
                                     {isEditing && editDraft ? inlineInput(editDraft.serviceName, "serviceName") : appt.serviceName}
                                   </td>
 
                                   {/* Client */}
-                                  <td style={{ padding: "12px 20px", color: "rgba(0,0,0,0.55)", whiteSpace: "nowrap" }}>
+                                  <td style={{ padding: "12px 20px", color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>
                                     {isEditing && editDraft ? inlineInput(editDraft.client, "client") : appt.client}
                                   </td>
 
                                   {/* Date */}
-                                  <td style={{ padding: "12px 20px", color: "rgba(0,0,0,0.45)", fontSize: 12, whiteSpace: "nowrap" }}>
+                                  <td style={{ padding: "12px 20px", color: "rgba(255,255,255,0.45)", fontSize: 12, whiteSpace: "nowrap" }}>
                                     {isEditing && editDraft
                                       ? inlineInput(editDraft.time.slice(0, 16), "time", "datetime-local")
                                       : format(new Date(appt.time), "MMM d · h:mm a")}
@@ -737,7 +739,7 @@ export default function AdminPage() {
                                       <select
                                         value={editDraft.status}
                                         onChange={(e) => setEditDraft((d) => d ? { ...d, status: e.target.value } : d)}
-                                        style={{ background: "#f5f5f8", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 6, color: "#0a0a0a", fontSize: 12, padding: "4px 8px", outline: "none" }}
+                                        style={{ background: "#1a1a1e", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 6, color: "#0a0a0a", fontSize: 12, padding: "4px 8px", outline: "none" }}
                                       >
                                         {["confirmed","pending","cancelled","completed"].map((s) => <option key={s} value={s}>{s}</option>)}
                                       </select>
@@ -745,7 +747,7 @@ export default function AdminPage() {
                                   </td>
 
                                   {/* Amount */}
-                                  <td style={{ padding: "12px 20px", fontWeight: 700, color: "#0a0a0a", whiteSpace: "nowrap" }}>
+                                  <td style={{ padding: "12px 20px", fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>
                                     {isEditing && editDraft
                                       ? inlineInput(String(editDraft.amount), "amount", "number")
                                       : formatCurrency(appt.amount)}
@@ -773,7 +775,7 @@ export default function AdminPage() {
                                           Yes
                                         </button>
                                         <button onClick={() => setDeleteConfirmId(null)}
-                                          style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(0,0,0,0.06)", border: "none", color: "rgba(0,0,0,0.5)", fontSize: 11, cursor: "pointer" }}>
+                                          style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(255,255,255,0.07)", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer" }}>
                                           No
                                         </button>
                                       </div>
@@ -803,7 +805,7 @@ export default function AdminPage() {
                                           <Check size={13} />
                                         </button>
                                         <button onClick={() => { setEditingId(null); setEditDraft(null); }}
-                                          style={{ width: 30, height: 30, borderRadius: 7, background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.1)", color: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                                          style={{ width: 30, height: 30, borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                                           <XCircle size={13} />
                                         </button>
                                       </div>
@@ -861,7 +863,8 @@ export default function AdminPage() {
                 {activeNav === "Services" && canManage && <AdminServicesPanel />}
                 {activeNav === "Shop"     && canManage && <AdminProductsPanel />}
                 {activeNav === "Careers"  && canManage && <AdminCareersPanel />}
-                {activeNav === "Users"    && isAdmin   && <AdminUsersPanel />}
+                {activeNav === "Users"       && isAdmin   && <AdminUsersPanel />}
+                {activeNav === "New Booking" && canManage && <AdminBookingPanel />}
 
               </motion.div>
             </AnimatePresence>
@@ -885,19 +888,19 @@ export default function AdminPage() {
               transition={{ type: "spring", damping: 30, stiffness: 320 }}
               style={{
                 position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 70,
-                width: "min(480px, 100vw)", background: "#ffffff",
+                width: "min(480px, 100vw)", background: "#18181b",
                 borderLeft: "1px solid rgba(0,0,0,0.09)",
                 display: "flex", flexDirection: "column", overflowY: "auto",
               }}
             >
               {/* Drawer header */}
-              <div style={{ padding: "20px 24px", borderBottom: "1px solid rgba(0,0,0,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <div style={{ padding: "20px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
                 <div>
                   <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "#b22222", marginBottom: 2 }}>Booking Details</p>
-                  <p style={{ fontSize: 13, color: "rgba(0,0,0,0.3)", fontFamily: "monospace" }}>#{detailAppt.id.slice(0, 8).toUpperCase()}</p>
+                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", fontFamily: "monospace" }}>#{detailAppt.id.slice(0, 8).toUpperCase()}</p>
                 </div>
                 <button onClick={() => setDetailAppt(null)}
-                  style={{ width: 34, height: 34, borderRadius: 9, background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.07)", color: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  style={{ width: 34, height: 34, borderRadius: 9, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <X size={16} />
                 </button>
               </div>
@@ -927,8 +930,8 @@ export default function AdminPage() {
                 </div>
 
                 {/* Service & time */}
-                <div style={{ background: "#f8f8fa", borderRadius: 14, padding: "18px 20px", border: "1px solid rgba(0,0,0,0.06)" }}>
-                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(0,0,0,0.28)", marginBottom: 14 }}>Appointment</p>
+                <div style={{ background: "#0f0f11", borderRadius: 14, padding: "18px 20px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 14 }}>Appointment</p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <DetailRow icon={<Scissors size={13} />} label="Service" value={detailAppt.serviceName} />
                     <DetailRow icon={<Calendar size={13} />} label="Date" value={format(new Date(detailAppt.time), "EEEE, d MMMM yyyy")} />
@@ -944,8 +947,8 @@ export default function AdminPage() {
                 </div>
 
                 {/* Client info */}
-                <div style={{ background: "#f8f8fa", borderRadius: 14, padding: "18px 20px", border: "1px solid rgba(0,0,0,0.06)" }}>
-                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(0,0,0,0.28)", marginBottom: 14 }}>Client</p>
+                <div style={{ background: "#0f0f11", borderRadius: 14, padding: "18px 20px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 14 }}>Client</p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <DetailRow icon={<Users size={13} />} label="Name" value={detailAppt.client || "—"} />
                     {detailAppt.phone && (
@@ -959,19 +962,19 @@ export default function AdminPage() {
                       />
                     )}
                     {!detailAppt.phone && !detailAppt.email && (
-                      <p style={{ fontSize: 12, color: "rgba(0,0,0,0.25)", fontStyle: "italic" }}>No contact info on file</p>
+                      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", fontStyle: "italic" }}>No contact info on file</p>
                     )}
                   </div>
                 </div>
 
                 {/* Notes */}
                 {detailAppt.customerNotes && (
-                  <div style={{ background: "#f8f8fa", borderRadius: 14, padding: "18px 20px", border: "1px solid rgba(0,0,0,0.06)" }}>
+                  <div style={{ background: "#0f0f11", borderRadius: 14, padding: "18px 20px", border: "1px solid rgba(255,255,255,0.06)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
-                      <StickyNote size={13} style={{ color: "rgba(0,0,0,0.28)" }} />
-                      <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(0,0,0,0.28)" }}>Notes</p>
+                      <StickyNote size={13} style={{ color: "rgba(255,255,255,0.28)" }} />
+                      <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)" }}>Notes</p>
                     </div>
-                    <p style={{ fontSize: 13, color: "rgba(0,0,0,0.5)", lineHeight: 1.65 }}>{detailAppt.customerNotes}</p>
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.65 }}>{detailAppt.customerNotes}</p>
                   </div>
                 )}
 
@@ -980,7 +983,7 @@ export default function AdminPage() {
                   <div style={{ display: "flex", gap: 10 }}>
                     <button
                       onClick={() => { setEditingId(detailAppt.id); setEditDraft({ ...detailAppt }); setDetailAppt(null); }}
-                      style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.25)", color: "#b8941a", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.25)", color: "#d4af37", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                       <Pencil size={13} /> Edit Booking
                     </button>
                     <button
@@ -1015,23 +1018,23 @@ export default function AdminPage() {
               style={{
                 position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
                 zIndex: 90, width: "min(460px, calc(100vw - 32px))",
-                background: "#ffffff", borderRadius: 20, border: "1px solid rgba(0,0,0,0.08)",
+                background: "#18181b", borderRadius: 20, border: "1px solid rgba(255,255,255,0.08)",
                 boxShadow: "0 24px 64px rgba(0,0,0,0.15)", overflow: "hidden",
               }}
             >
               {/* Modal header */}
-              <div style={{ padding: "20px 24px", borderBottom: "1px solid rgba(0,0,0,0.07)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ padding: "20px 24px", borderBottom: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(52,211,153,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Send size={16} style={{ color: "#34d399" }} />
                   </div>
                   <div>
                     <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#b22222" }}>Admin</p>
-                    <p style={{ fontSize: 15, fontWeight: 700, color: "#0a0a0a" }}>Initiate Payment</p>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>Initiate Payment</p>
                   </div>
                 </div>
                 <button onClick={closePayInitModal}
-                  style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.07)", color: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <X size={15} />
                 </button>
               </div>
@@ -1040,30 +1043,30 @@ export default function AdminPage() {
               <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 16 }}>
 
                 {/* Booking summary */}
-                <div style={{ background: "#f8f8fa", borderRadius: 14, padding: "16px 18px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", gap: 10 }}>
-                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(0,0,0,0.28)", marginBottom: 4 }}>Booking Summary</p>
+                <div style={{ background: "#0f0f11", borderRadius: 14, padding: "16px 18px", border: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", gap: 10 }}>
+                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 4 }}>Booking Summary</p>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 12, color: "rgba(0,0,0,0.5)" }}>Client</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#0a0a0a" }}>{payInitAppt.client}</span>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Client</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{payInitAppt.client}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 12, color: "rgba(0,0,0,0.5)" }}>Service</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#0a0a0a" }}>{payInitAppt.serviceName}</span>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Service</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{payInitAppt.serviceName}</span>
                   </div>
-                  <div style={{ height: 1, background: "rgba(0,0,0,0.06)" }} />
+                  <div style={{ height: 1, background: "rgba(255,255,255,0.07)" }} />
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 12, color: "rgba(0,0,0,0.5)" }}>Total Price</span>
-                    <span style={{ fontSize: 13, color: "rgba(0,0,0,0.55)" }}>{formatCurrency(payInitAppt.amount)}</span>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Total Price</span>
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{formatCurrency(payInitAppt.amount)}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 12, color: "rgba(0,0,0,0.5)" }}>Deposit Paid</span>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Deposit Paid</span>
                     <span style={{ fontSize: 13, color: "#34d399", fontWeight: 600 }}>
                       {payInitAppt.depositPaid > 0 ? `− ${formatCurrency(payInitAppt.depositPaid)}` : "—"}
                     </span>
                   </div>
-                  <div style={{ height: 1, background: "rgba(0,0,0,0.06)" }} />
+                  <div style={{ height: 1, background: "rgba(255,255,255,0.07)" }} />
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#0a0a0a" }}>Amount Owed</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Amount Owed</span>
                     <span style={{ fontSize: 16, fontWeight: 800, color: "#b22222" }}>
                       {formatCurrency(payInitAppt.amount - payInitAppt.depositPaid)}
                     </span>
@@ -1074,12 +1077,12 @@ export default function AdminPage() {
                 {(payInitAppt.phone || payInitAppt.email) && (
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                     {payInitAppt.phone && (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(0,0,0,0.45)", background: "rgba(0,0,0,0.04)", borderRadius: 8, padding: "5px 10px" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "5px 10px" }}>
                         <Phone size={11} /> {payInitAppt.phone}
                       </span>
                     )}
                     {payInitAppt.email && (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(0,0,0,0.45)", background: "rgba(0,0,0,0.04)", borderRadius: 8, padding: "5px 10px" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "5px 10px" }}>
                         <Mail size={11} /> {payInitAppt.email}
                       </span>
                     )}
@@ -1090,7 +1093,7 @@ export default function AdminPage() {
                 {payLink && (
                   <div style={{ background: "rgba(52,211,153,0.06)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
                     <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "#34d399" }}>Payment Link Generated</p>
-                    <p style={{ fontSize: 11, color: "rgba(0,0,0,0.55)", wordBreak: "break-all", fontFamily: "monospace", lineHeight: 1.5 }}>{payLink}</p>
+                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", wordBreak: "break-all", fontFamily: "monospace", lineHeight: 1.5 }}>{payLink}</p>
                     <button
                       onClick={handleCopyPayLink}
                       style={{ alignSelf: "flex-start", padding: "7px 14px", borderRadius: 8, border: "1px solid rgba(52,211,153,0.35)", background: payCopied ? "rgba(52,211,153,0.15)" : "rgba(52,211,153,0.08)", color: "#34d399", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all 0.18s", display: "flex", alignItems: "center", gap: 6 }}>
@@ -1136,9 +1139,9 @@ function DetailRow({ icon, label, value, valueColor, action }: {
 }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-      <span style={{ color: "rgba(0,0,0,0.3)", marginTop: 1, flexShrink: 0 }}>{icon}</span>
+      <span style={{ color: "rgba(255,255,255,0.3)", marginTop: 1, flexShrink: 0 }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(0,0,0,0.28)", marginBottom: 2 }}>{label}</p>
+        <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 2 }}>{label}</p>
         <p style={{ fontSize: 13, color: valueColor || "#0a0a0a", fontWeight: 500, wordBreak: "break-word" }}>{value}</p>
       </div>
       {action && <span style={{ flexShrink: 0, marginTop: 14 }}>{action}</span>}

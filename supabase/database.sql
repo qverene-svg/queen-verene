@@ -8,10 +8,11 @@
 --   1. Extensions
 --   2. Tables  (CREATE TABLE IF NOT EXISTS)
 --   3. Indexes
---   4. RLS helper function  (CREATE OR REPLACE — always safe)
---   5. Row Level Security   (DROP IF EXISTS → CREATE — idempotent)
+--   4. RLS helper functions  (CREATE OR REPLACE — always safe)
+--   5. Row Level Security    (DROP IF EXISTS → CREATE — idempotent)
 --   6. Storage bucket + policy for uploaded images
---   7. Seed data            (INSERT ... ON CONFLICT DO NOTHING)
+--   7. Seed data             (INSERT ... ON CONFLICT DO NOTHING)
+--   8. Safety patches        (live-schema alignment)
 -- =============================================================================
 
 
@@ -27,13 +28,19 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- =============================================================================
 
 -- Users (extends Supabase auth.users)
+-- Roles:
+--   admin    — full platform access
+--   manager  — manage bookings, shop, staff; cannot manage users
+--   staff    — view own schedule and assigned appointments
+--   viewer   — read-only access to admin dashboard (e.g. silent partner)
+--   customer — default for salon clients booking appointments
 CREATE TABLE IF NOT EXISTS public.users (
   id          UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   full_name   TEXT NOT NULL,
   email       TEXT NOT NULL UNIQUE,
   phone       TEXT,
   role        TEXT NOT NULL DEFAULT 'customer'
-                CHECK (role IN ('admin', 'manager', 'staff', 'customer')),
+                CHECK (role IN ('admin', 'manager', 'staff', 'viewer', 'customer')),
   avatar_url  TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
@@ -75,6 +82,14 @@ CREATE TABLE IF NOT EXISTS public.services (
 );
 
 -- Appointments
+-- payment_status values:
+--   unpaid       — no payment received
+--   deposit_paid — Hubtel deposit (GHS 50) collected, balance outstanding
+--   paid         — full amount collected (alias used by dashboard/admin UI)
+--   fully_paid   — canonical "paid in full" (same intent as 'paid')
+--   refunded     — refund issued
+-- Notes field stores optional [meta:channel=sms&name=X&phone=Y&email=Z] prefix
+-- for walk-in / admin-created bookings where customer_id may be NULL.
 CREATE TABLE IF NOT EXISTS public.appointments (
   id                     UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   customer_id            UUID REFERENCES public.users(id)          ON DELETE SET NULL,
@@ -85,10 +100,9 @@ CREATE TABLE IF NOT EXISTS public.appointments (
   status                 TEXT NOT NULL DEFAULT 'pending'
                            CHECK (status IN ('pending','confirmed','completed','cancelled')),
   payment_status         TEXT NOT NULL DEFAULT 'unpaid'
-                           CHECK (payment_status IN ('unpaid','deposit_paid','fully_paid','refunded')),
+                           CHECK (payment_status IN ('unpaid','deposit_paid','paid','fully_paid','refunded')),
   total_price            INTEGER NOT NULL,
   deposit_paid           INTEGER DEFAULT 0,
-  hubtel_transaction_ref TEXT,
   notes                  TEXT,
   created_at             TIMESTAMPTZ DEFAULT NOW()
 );
@@ -155,19 +169,24 @@ CREATE TABLE IF NOT EXISTS public.system_logs (
 -- 3. INDEXES
 -- =============================================================================
 
-CREATE INDEX IF NOT EXISTS idx_appointments_start_time  ON public.appointments(start_time);
-CREATE INDEX IF NOT EXISTS idx_appointments_customer_id ON public.appointments(customer_id);
-CREATE INDEX IF NOT EXISTS idx_appointments_staff_id    ON public.appointments(staff_id);
-CREATE INDEX IF NOT EXISTS idx_appointments_status      ON public.appointments(status);
-CREATE INDEX IF NOT EXISTS idx_products_name            ON public.products(name);
+CREATE INDEX IF NOT EXISTS idx_appointments_start_time     ON public.appointments(start_time);
+CREATE INDEX IF NOT EXISTS idx_appointments_customer_id    ON public.appointments(customer_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_staff_id       ON public.appointments(staff_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_status         ON public.appointments(status);
+CREATE INDEX IF NOT EXISTS idx_appointments_payment_status ON public.appointments(payment_status);
+CREATE INDEX IF NOT EXISTS idx_products_name               ON public.products(name);
+CREATE INDEX IF NOT EXISTS idx_users_role                  ON public.users(role);
+CREATE INDEX IF NOT EXISTS idx_users_email                 ON public.users(email);
 
 
 -- =============================================================================
--- 4. RLS HELPER FUNCTION
+-- 4. RLS HELPER FUNCTIONS
 -- =============================================================================
--- SECURITY DEFINER bypasses RLS when this function reads public.users,
--- preventing the infinite-recursion error on admin SELECT policies.
+-- All functions use SECURITY DEFINER so they can read public.users without
+-- triggering RLS recursion.  They are granted only to 'authenticated' and
+-- revoked from the default PUBLIC role.
 
+-- is_admin_or_manager() — used by most admin policies
 CREATE OR REPLACE FUNCTION public.is_admin_or_manager()
 RETURNS boolean
 LANGUAGE sql
@@ -182,8 +201,44 @@ AS $$
   );
 $$;
 
-REVOKE ALL  ON FUNCTION public.is_admin_or_manager() FROM PUBLIC;
+REVOKE ALL    ON FUNCTION public.is_admin_or_manager() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_admin_or_manager() TO authenticated;
+
+-- is_admin() — used by admin-only policies (user management, etc.)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = auth.uid()
+      AND lower(trim(role)) = 'admin'
+  );
+$$;
+
+REVOKE ALL    ON FUNCTION public.is_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+
+-- is_staff() — used by staff-level access policies
+CREATE OR REPLACE FUNCTION public.is_staff()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = auth.uid()
+      AND lower(trim(role)) IN ('admin', 'manager', 'staff', 'viewer')
+  );
+$$;
+
+REVOKE ALL    ON FUNCTION public.is_staff() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_staff() TO authenticated;
 
 
 -- =============================================================================
@@ -192,6 +247,7 @@ GRANT EXECUTE ON FUNCTION public.is_admin_or_manager() TO authenticated;
 
 ALTER TABLE public.users             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.staff_profiles    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.staff_availability ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.appointments      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.product_inquiries ENABLE ROW LEVEL SECURITY;
@@ -201,30 +257,88 @@ ALTER TABLE public.applications      ENABLE ROW LEVEL SECURITY;
 
 -- ── users ────────────────────────────────────────────────────────────────────
 
-DROP POLICY IF EXISTS "Users can view own profile"   ON public.users;
-DROP POLICY IF EXISTS "Admins can view all users"    ON public.users;
-DROP POLICY IF EXISTS "Users can update own profile" ON public.users;
-DROP POLICY IF EXISTS "Users can insert own profile" ON public.users;
+DROP POLICY IF EXISTS "Users can view own profile"          ON public.users;
+DROP POLICY IF EXISTS "Admins can view all users"           ON public.users;
+DROP POLICY IF EXISTS "Staff can view all users"            ON public.users;
+DROP POLICY IF EXISTS "Users can update own profile"        ON public.users;
+DROP POLICY IF EXISTS "Admins can update any user"          ON public.users;
+DROP POLICY IF EXISTS "Users can insert own profile"        ON public.users;
+DROP POLICY IF EXISTS "Admins can delete users"             ON public.users;
 
+-- SELECT: users see their own row; admin/manager/staff/viewer see everyone
 CREATE POLICY "Users can view own profile"
   ON public.users FOR SELECT USING (auth.uid() = id);
 
-CREATE POLICY "Admins can view all users"
-  ON public.users FOR SELECT USING (public.is_admin_or_manager());
+CREATE POLICY "Staff can view all users"
+  ON public.users FOR SELECT USING (public.is_staff());
 
-CREATE POLICY "Users can update own profile"
-  ON public.users FOR UPDATE USING (auth.uid() = id);
-
--- Required for /auth/register — new users insert their own public.users row
+-- INSERT: new users can insert their own profile row on registration
 CREATE POLICY "Users can insert own profile"
   ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
 
+-- UPDATE: users update their own profile; admins can update any user (role changes, etc.)
+CREATE POLICY "Users can update own profile"
+  ON public.users FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Admins can update any user"
+  ON public.users FOR UPDATE USING (public.is_admin());
+
+-- DELETE: only admins can remove users (user management panel)
+CREATE POLICY "Admins can delete users"
+  ON public.users FOR DELETE USING (public.is_admin());
+
+-- ── staff_profiles ────────────────────────────────────────────────────────────
+
+DROP POLICY IF EXISTS "Staff can view own profile"        ON public.staff_profiles;
+DROP POLICY IF EXISTS "Admins manage staff profiles"      ON public.staff_profiles;
+DROP POLICY IF EXISTS "Anyone can view staff profiles"    ON public.staff_profiles;
+
+-- Public read (for booking step that shows available staff)
+CREATE POLICY "Anyone can view staff profiles"
+  ON public.staff_profiles FOR SELECT USING (true);
+
+-- Staff can update their own profile
+CREATE POLICY "Staff can view own profile"
+  ON public.staff_profiles FOR UPDATE
+  USING (user_id = auth.uid());
+
+-- Admins/managers can fully manage staff profiles
+CREATE POLICY "Admins manage staff profiles"
+  ON public.staff_profiles FOR ALL USING (public.is_admin_or_manager());
+
+-- ── staff_availability ────────────────────────────────────────────────────────
+
+DROP POLICY IF EXISTS "Anyone can view staff availability"   ON public.staff_availability;
+DROP POLICY IF EXISTS "Admins manage staff availability"     ON public.staff_availability;
+DROP POLICY IF EXISTS "Staff manage own availability"        ON public.staff_availability;
+
+-- Public read (booking UI needs to know when staff are free)
+CREATE POLICY "Anyone can view staff availability"
+  ON public.staff_availability FOR SELECT USING (true);
+
+-- Staff manage their own availability rows
+CREATE POLICY "Staff manage own availability"
+  ON public.staff_availability FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.staff_profiles sp
+      WHERE sp.id = staff_id AND sp.user_id = auth.uid()
+    )
+  );
+
+-- Admins/managers manage all availability
+CREATE POLICY "Admins manage staff availability"
+  ON public.staff_availability FOR ALL USING (public.is_admin_or_manager());
+
 -- ── appointments ─────────────────────────────────────────────────────────────
 
-DROP POLICY IF EXISTS "Customers see own appointments"  ON public.appointments;
-DROP POLICY IF EXISTS "Staff see assigned appointments" ON public.appointments;
-DROP POLICY IF EXISTS "Admins see all appointments"     ON public.appointments;
+DROP POLICY IF EXISTS "Customers see own appointments"     ON public.appointments;
+DROP POLICY IF EXISTS "Customers can book appointments"    ON public.appointments;
+DROP POLICY IF EXISTS "Staff see assigned appointments"    ON public.appointments;
+DROP POLICY IF EXISTS "Admins see all appointments"        ON public.appointments;
+DROP POLICY IF EXISTS "Admins manage all appointments"     ON public.appointments;
 
+-- SELECT: customers see their own; staff see assigned; admins see all
 CREATE POLICY "Customers see own appointments"
   ON public.appointments FOR SELECT USING (customer_id = auth.uid());
 
@@ -236,7 +350,15 @@ CREATE POLICY "Staff see assigned appointments"
     )
   );
 
-CREATE POLICY "Admins see all appointments"
+-- INSERT: authenticated users can insert their own appointment (customer_id = their id)
+-- Walk-in / admin-created bookings (customer_id = NULL) go through the
+-- service-role admin client in /api/admin/bookings and bypass RLS entirely.
+CREATE POLICY "Customers can book appointments"
+  ON public.appointments FOR INSERT
+  WITH CHECK (customer_id = auth.uid());
+
+-- ALL (SELECT + INSERT + UPDATE + DELETE): admins and managers can do everything
+CREATE POLICY "Admins manage all appointments"
   ON public.appointments FOR ALL USING (public.is_admin_or_manager());
 
 -- ── products ─────────────────────────────────────────────────────────────────
@@ -245,15 +367,15 @@ DROP POLICY IF EXISTS "Anyone can view products" ON public.products;
 DROP POLICY IF EXISTS "Admins manage products"   ON public.products;
 
 CREATE POLICY "Anyone can view products"
-  ON public.products FOR SELECT USING (is_available = true);
+  ON public.products FOR SELECT USING (true);  -- show unavailable items too (admin needs them)
 
 CREATE POLICY "Admins manage products"
   ON public.products FOR ALL USING (public.is_admin_or_manager());
 
 -- ── product_inquiries ────────────────────────────────────────────────────────
 
-DROP POLICY IF EXISTS "Anyone can insert inquiry"   ON public.product_inquiries;
-DROP POLICY IF EXISTS "Admins view all inquiries"   ON public.product_inquiries;
+DROP POLICY IF EXISTS "Anyone can insert inquiry" ON public.product_inquiries;
+DROP POLICY IF EXISTS "Admins view all inquiries" ON public.product_inquiries;
 
 CREATE POLICY "Anyone can insert inquiry"
   ON public.product_inquiries FOR INSERT WITH CHECK (true);
@@ -266,6 +388,7 @@ CREATE POLICY "Admins view all inquiries"
 DROP POLICY IF EXISTS "Anyone read active services" ON public.services;
 DROP POLICY IF EXISTS "Admins manage services"      ON public.services;
 
+-- Customers only see active services; admins see all (managed via admin client)
 CREATE POLICY "Anyone read active services"
   ON public.services FOR SELECT USING (is_active = true);
 
@@ -353,9 +476,13 @@ ON CONFLICT DO NOTHING;
 
 
 -- =============================================================================
--- 8. SAFETY PATCHES (live-schema alignment)
+-- 8. SAFETY PATCHES  (live-schema alignment — idempotent)
 -- =============================================================================
--- Run-safe adjustments for already-existing environments.
+-- These ALTER TABLE statements update already-existing databases without
+-- requiring a full schema drop and re-create.
+
+-- ── appointments: payment_status ─────────────────────────────────────────────
+-- Add 'paid' alongside existing values ('unpaid','deposit_paid','fully_paid','refunded').
 
 ALTER TABLE public.appointments
   ALTER COLUMN payment_status SET DEFAULT 'unpaid';
@@ -365,4 +492,45 @@ ALTER TABLE public.appointments
 
 ALTER TABLE public.appointments
   ADD CONSTRAINT appointments_payment_status_check
-  CHECK (payment_status IN ('unpaid','deposit_paid','fully_paid','refunded'));
+  CHECK (payment_status IN ('unpaid','deposit_paid','paid','fully_paid','refunded'));
+
+-- ── appointments: drop legacy column (if it exists) ──────────────────────────
+-- hubtel_transaction_ref was removed from the schema; drop silently if present.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name   = 'appointments'
+       AND column_name  = 'hubtel_transaction_ref'
+  ) THEN
+    ALTER TABLE public.appointments DROP COLUMN hubtel_transaction_ref;
+  END IF;
+END $$;
+
+-- ── users: role — add 'viewer' ────────────────────────────────────────────────
+-- Viewer is a read-only dashboard role (silent partner / investor).
+
+ALTER TABLE public.users
+  DROP CONSTRAINT IF EXISTS users_role_check;
+
+ALTER TABLE public.users
+  ADD CONSTRAINT users_role_check
+  CHECK (role IN ('admin', 'manager', 'staff', 'viewer', 'customer'));
+
+-- ── appointments: ensure end_time column exists ───────────────────────────────
+-- Earlier environments may be missing end_time if created before this field was added.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name   = 'appointments'
+       AND column_name  = 'end_time'
+  ) THEN
+    ALTER TABLE public.appointments ADD COLUMN end_time TIMESTAMPTZ;
+    -- Back-fill with start_time + 60 minutes for any existing rows
+    UPDATE public.appointments SET end_time = start_time + INTERVAL '60 minutes' WHERE end_time IS NULL;
+    ALTER TABLE public.appointments ALTER COLUMN end_time SET NOT NULL;
+  END IF;
+END $$;
