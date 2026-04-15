@@ -476,12 +476,12 @@ export default function AdminPage() {
                   display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
                   borderRadius: 10, border: "none", cursor: "pointer", textAlign: "left", width: "100%",
                   background: active ? "#b22222" : "transparent",
-                  color: active ? "#fff" : "rgba(0,0,0,0.45)",
+                  color: active ? "#fff" : "rgba(255,255,255,0.45)",
                   fontSize: 13, fontWeight: 600, transition: "all 0.18s",
                   boxShadow: active ? "0 4px 16px rgba(178,34,34,0.25)" : "none",
                 }}
-                onMouseEnter={(e) => { if (!active) { (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,0,0,0.05)"; (e.currentTarget as HTMLButtonElement).style.color = "#0a0a0a"; } }}
-                onMouseLeave={(e) => { if (!active) { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(0,0,0,0.45)"; } }}
+                onMouseEnter={(e) => { if (!active) { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.85)"; } }}
+                onMouseLeave={(e) => { if (!active) { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.45)"; } }}
               >
                 <Icon size={15} />
                 {label}
