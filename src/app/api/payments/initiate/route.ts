@@ -1,6 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
+ * Hubtel Unified Pay rejects many characters in clientReference (e.g. `/`, spaces, em dashes).
+ * Base64 basicAuth contains `+` and `/` — must use encodeURIComponent per field, not raw
+ * URLSearchParams.toString(), or `+` can be misread as space when Hubtel parses the query.
+ */
+function hubtelSafeClientReference(raw: string): string {
+  const s = String(raw)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  const out = s.slice(0, 80);
+  return out || "ref";
+}
+
+/** ASCII-ish description for purchaseDescription (Hubtel validation is strict). */
+function hubtelSafePurchaseDescription(raw: string): string {
+  const s = String(raw)
+    .replace(/[\u2013\u2014\u2212]/g, "-") // en dash, em dash, minus
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return s.slice(0, 200) || "Verene payment";
+}
+
+/**
  * POST /api/payments/initiate
  * Generates a Hubtel unified-pay checkout URL for any amount.
  * Used for:
@@ -35,21 +63,23 @@ export async function POST(req: NextRequest) {
     const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
     const msisdn    = (customerPhone || "").replace(/^\+/, "");
 
-    const params = new URLSearchParams({
-      amount:               String(Number(amount).toFixed(2)),
-      purchaseDescription:  description,
-      clientReference,
-      callbackUrl:          `${appUrl}/api/payments/callback`,
-      merchantAccount,
-      basicAuth,
-      integrationType:      "External",
-    });
+    const safeRef = hubtelSafeClientReference(clientReference);
+    const safeDesc = hubtelSafePurchaseDescription(description);
+    const enc = encodeURIComponent;
 
-    // Add phone only if provided (optional for unified-pay)
-    if (msisdn) params.set("customerPhoneNumber", msisdn);
+    const q: string[] = [
+      `amount=${enc(String(Number(amount).toFixed(2)))}`,
+      `purchaseDescription=${enc(safeDesc)}`,
+      `clientReference=${enc(safeRef)}`,
+      `callbackUrl=${enc(`${appUrl}/api/payments/callback`)}`,
+      `merchantAccount=${enc(merchantAccount)}`,
+      `basicAuth=${enc(basicAuth)}`,
+      `integrationType=${enc("External")}`,
+    ];
+    if (msisdn) q.push(`customerPhoneNumber=${enc(msisdn)}`);
 
-    const paymentUrl = `https://unified-pay.hubtel.com/pay?${params.toString()}`;
-    console.log("[Payments/initiate] URL built for ref:", clientReference, "amount:", amount);
+    const paymentUrl = `https://unified-pay.hubtel.com/pay?${q.join("&")}`;
+    console.log("[Payments/initiate] ref (sanitized):", safeRef, "len:", safeRef.length, "amount:", amount);
 
     return NextResponse.json({ paymentUrl });
   } catch (err) {

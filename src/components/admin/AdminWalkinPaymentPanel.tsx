@@ -116,6 +116,30 @@ function QrDisplay({ url }: { url: string }) {
   );
 }
 
+/** Match Hubtel / initiate route: ASCII description, no fancy punctuation (avoids validation errors). */
+function hubtelSafeWalkinDescription(raw: string): string {
+  return raw
+    .replace(/[\u2013\u2014\u2212]/g, "-") // en dash, em dash, minus
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+}
+
+/** Hubtel-safe reference: letters, digits, hyphens only (initiate also sanitizes server-side). */
+function hubtelSafeWalkinClientReference(): string {
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `walkin-${id.replace(/[^a-zA-Z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "")}`;
+}
+
+function hubtelSafeWalkinPhone(raw: string): string | undefined {
+  const t = raw.trim().replace(/\s+/g, "");
+  if (!t) return undefined;
+  return t.replace(/^\+/, "");
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function AdminWalkinPaymentPanel() {
@@ -139,16 +163,18 @@ export function AdminWalkinPaymentPanel() {
     setResult(null);
 
     const amount = Number(amountGhs);
-    const ref    = `walkin-${Date.now()}`;
+    const descSafe = hubtelSafeWalkinDescription(description.trim()) || "Walk-in payment";
+    const ref = hubtelSafeWalkinClientReference();
+    const phoneSafe = hubtelSafeWalkinPhone(phone);
 
     const res = await fetch("/api/payments/initiate", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         amount,
-        description:     description.trim(),
+        description:     descSafe,
         clientReference: ref,
-        customerPhone:   phone.trim() || undefined,
+        customerPhone:   phoneSafe,
         customerName:    customerName.trim(),
       }),
     });
@@ -164,7 +190,7 @@ export function AdminWalkinPaymentPanel() {
       paymentUrl:   json.paymentUrl,
       customerName: customerName.trim(),
       amount,
-      description:  description.trim(),
+      description:  descSafe,
       phone:        phone.trim(),
     });
     setLoading(false);
