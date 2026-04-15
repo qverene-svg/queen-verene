@@ -49,13 +49,16 @@ export default function ShopPage() {
   const handlePay = async (product: Product) => {
     setPayingId(product.id);
     try {
+      // Hubtel/client logs: keep reference alphanumeric + hyphen (SKU can contain spaces/symbols).
+      const skuSafe = product.sku.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "item";
+      const clientReference = `shop-${skuSafe}-${Date.now()}`;
       const res = await fetch("/api/payments/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount:          product.price / 100,  // pesewas → GHS
           description:     `Verene Shop — ${product.name}`,
-          clientReference: `shop-${product.sku}-${Date.now()}`,
+          clientReference,
         }),
       });
       const { paymentUrl, error } = await res.json();

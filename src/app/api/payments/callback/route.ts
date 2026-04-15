@@ -20,6 +20,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: "payment_failed" });
     }
 
+    const appointmentId = parseAppointmentIdFromHubtelReference(String(ClientReference));
+    if (!appointmentId) {
+      // Walk-in links (walkin-*), shop checkouts (shop-*), or other non-appointment refs —
+      // must not hit appointments.id (UUID) or PostgREST returns 22P02 / 500.
+      console.log(
+        "[Payment callback] Non-appointment reference; skipping DB update:",
+        ClientReference,
+        "amount:",
+        Amount
+      );
+      return NextResponse.json({ status: "ok", scope: "external_payment" });
+    }
+
     const supabase = await createAdminClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any;
@@ -32,7 +45,7 @@ export async function POST(req: NextRequest) {
         users:customer_id ( full_name, email, phone ),
         services:service_id ( name )
       `)
-      .eq("id", ClientReference)
+      .eq("id", appointmentId)
       .single();
 
     // Update appointment payment status → confirmed
@@ -49,7 +62,7 @@ export async function POST(req: NextRequest) {
     const { error: updateError } = await db
       .from("appointments")
       .update(updatePayload)
-      .eq("id", ClientReference);
+      .eq("id", appointmentId);
     if (updateError) {
       console.error("[Payment callback] Failed to update appointment:", JSON.stringify(updateError));
     }
@@ -86,7 +99,7 @@ export async function POST(req: NextRequest) {
 
       // keep reminders stable for downstream jobs
       if (meta.channel !== channel) {
-        await db.from("appointments").update({ notes: rewriteNotesMeta(appt.notes ?? "", { ...meta, channel }) }).eq("id", ClientReference);
+        await db.from("appointments").update({ notes: rewriteNotesMeta(appt.notes ?? "", { ...meta, channel }) }).eq("id", appointmentId);
       }
     }
 
@@ -95,6 +108,18 @@ export async function POST(req: NextRequest) {
     console.error("[Payment callback]", err);
     return NextResponse.json({ error: "Callback processing failed" }, { status: 500 });
   }
+}
+
+/** Hubtel clientReference for bookings is the appointment UUID. Dashboard balance pay uses `balance-{uuid}`. */
+function parseAppointmentIdFromHubtelReference(ref: string): string | null {
+  const s = ref.trim();
+  if (isUuid(s)) return s;
+  const m = /^balance-([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(s);
+  return m ? m[1] : null;
+}
+
+function isUuid(s: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 }
 
 function parseMetaFromNotes(notes: string): Record<string, string> {
