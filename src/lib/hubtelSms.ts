@@ -3,28 +3,46 @@
  * https://developers.hubtel.com/ (Messaging → Programmable SMS)
  *
  * Env (server-only):
- *   HUBTEL_SMS_SENDER        — registered Sender ID (From), e.g. "Verene" or "QueenVerene"
- *   HUBTEL_SMS_CLIENT_ID     — optional; defaults to HUBTEL_CLIENT_ID (payments)
- *   HUBTEL_SMS_CLIENT_SECRET — optional; defaults to HUBTEL_CLIENT_SECRET
- *   HUBTEL_SMS_API_URL       — optional; default https://smsc.hubtel.com/v1/messages
+ *   HUBTEL_SMS_SENDER           — registered Sender ID (From), e.g. "Verene" or "QueenVerene"
+ *   HUBTEL_SMS_AUTH_MODE        — optional; "token" | "basic" (default "token")
+ *   HUBTEL_SMS_API_TOKEN        — required when auth mode is "token"
+ *   HUBTEL_SMS_TOKEN_PREFIX     — optional auth prefix for token mode (default "Bearer")
+ *   HUBTEL_SMS_CLIENT_ID        — required when auth mode is "basic"; defaults to HUBTEL_CLIENT_ID
+ *   HUBTEL_SMS_CLIENT_SECRET    — required when auth mode is "basic"; defaults to HUBTEL_CLIENT_SECRET
+ *   HUBTEL_SMS_API_URL          — optional; default https://smsc.hubtel.com/v1/messages
  */
 
 import { formatPhone } from "@/lib/utils";
 
 const DEFAULT_API = "https://smsc.hubtel.com/v1/messages";
 
-function getSmsCredentials(): { clientId: string; clientSecret: string; from: string; url: string } | null {
-  const clientId =
-    process.env.HUBTEL_SMS_CLIENT_ID?.trim() || process.env.HUBTEL_CLIENT_ID?.trim();
-  const clientSecret =
-    process.env.HUBTEL_SMS_CLIENT_SECRET?.trim() || process.env.HUBTEL_CLIENT_SECRET?.trim();
+type SmsAuth =
+  | { mode: "token"; token: string; tokenPrefix: string }
+  | { mode: "basic"; clientId: string; clientSecret: string };
+
+function getSmsCredentials(): { from: string; url: string; auth: SmsAuth } | null {
   const from = process.env.HUBTEL_SMS_SENDER?.trim();
   const url = process.env.HUBTEL_SMS_API_URL?.trim() || DEFAULT_API;
+  const authMode = (process.env.HUBTEL_SMS_AUTH_MODE?.trim().toLowerCase() || "token") as
+    | "token"
+    | "basic";
 
-  if (!clientId || !clientSecret || !from) return null;
+  if (!from) return null;
+
+  if (authMode === "token") {
+    const token = process.env.HUBTEL_SMS_API_TOKEN?.trim();
+    const tokenPrefix = process.env.HUBTEL_SMS_TOKEN_PREFIX?.trim() || "Bearer";
+    if (!token || token === "your_hubtel_sms_api_token") return null;
+    return { from, url, auth: { mode: "token", token, tokenPrefix } };
+  }
+
+  const clientId = process.env.HUBTEL_SMS_CLIENT_ID?.trim() || process.env.HUBTEL_CLIENT_ID?.trim();
+  const clientSecret =
+    process.env.HUBTEL_SMS_CLIENT_SECRET?.trim() || process.env.HUBTEL_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) return null;
   if (clientId === "your_hubtel_client_id" || clientSecret === "your_hubtel_client_secret") return null;
 
-  return { clientId, clientSecret, from, url };
+  return { from, url, auth: { mode: "basic", clientId, clientSecret } };
 }
 
 /** Strip WhatsApp-style markup for SMS. */
@@ -39,19 +57,22 @@ export async function sendHubtelSms(to: string, content: string): Promise<boolea
   const cfg = getSmsCredentials();
   if (!cfg) {
     console.warn(
-      "[Hubtel SMS] Missing HUBTEL_SMS_SENDER or Hubtel client credentials (HUBTEL_SMS_CLIENT_* / HUBTEL_CLIENT_*)."
+      "[Hubtel SMS] Missing credentials. Configure HUBTEL_SMS_SENDER and either HUBTEL_SMS_API_TOKEN (token mode) or HUBTEL_SMS_CLIENT_* / HUBTEL_CLIENT_* (basic mode)."
     );
     return false;
   }
 
-  const auth = Buffer.from(`${cfg.clientId}:${cfg.clientSecret}`).toString("base64");
   const recipient = formatPhone(to);
+  const authorizationHeader =
+    cfg.auth.mode === "token"
+      ? `${cfg.auth.tokenPrefix} ${cfg.auth.token}`
+      : `Basic ${Buffer.from(`${cfg.auth.clientId}:${cfg.auth.clientSecret}`).toString("base64")}`;
 
   try {
     const res = await fetch(cfg.url, {
       method: "POST",
       headers: {
-        Authorization: `Basic ${auth}`,
+        Authorization: authorizationHeader,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
