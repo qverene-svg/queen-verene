@@ -253,7 +253,7 @@ export function ConfirmStep({ booking, onBack, onComplete }: ConfirmStepProps) {
           disabled={!name.trim() || (!hasPhone && !hasEmail) || (hasBoth && !reminderChannel)}
           className="w-full sm:w-auto"
         >
-          Pay GHS 50 Deposit via Hubtel
+          Make Payment — GHS 50 Deposit
         </Button>
       </div>
     </div>

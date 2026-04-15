@@ -361,8 +361,37 @@ function DashboardInner() {
 }
 
 function AppointmentCard({ appt, onCancel }: { appt: Appointment; onCancel?: () => void }) {
-  const badge    = STATUS_BADGE[appt.status] ?? { label: appt.status, variant: "gray" as const };
+  const badge     = STATUS_BADGE[appt.status] ?? { label: appt.status, variant: "gray" as const };
   const canCancel = (appt.status === "pending" || appt.status === "confirmed") && !!onCancel;
+
+  // Remaining balance: show "Make Payment" if deposit was paid but full amount is not yet settled
+  const remaining = appt.total_price - appt.deposit_paid;
+  const canPayBalance = remaining > 0 &&
+    appt.deposit_paid > 0 &&
+    appt.payment_status !== "paid" &&
+    (appt.status === "confirmed" || appt.status === "completed");
+  const [payingBalance, setPayingBalance] = useState(false);
+
+  const handlePayBalance = async () => {
+    setPayingBalance(true);
+    try {
+      const res = await fetch("/api/payments/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount:           remaining / 100, // pesewas → GHS
+          description:      `Verene Balance Payment — ${appt.services?.name || "Beauty Service"}`,
+          clientReference:  `balance-${appt.id}`,
+        }),
+      });
+      const { paymentUrl, error } = await res.json();
+      if (error || !paymentUrl) { toast.error(error || "Could not generate payment link"); setPayingBalance(false); return; }
+      window.location.href = paymentUrl;
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+      setPayingBalance(false);
+    }
+  };
 
   return (
     <div className="bg-white rounded-2xl p-5 sm:p-6 border border-black/[0.06] hover:shadow-md transition-shadow">
@@ -391,9 +420,19 @@ function AppointmentCard({ appt, onCancel }: { appt: Appointment; onCancel?: () 
         <div className="text-right shrink-0">
           <p className="font-[Playfair_Display] text-xl text-[#0a0a0a]">{formatCurrency(appt.total_price)}</p>
           <p className="text-xs text-[#0a0a0a]/35 mt-0.5">
-            Deposit: {formatCurrency(appt.deposit_paid)}
+            {appt.deposit_paid > 0 ? `Paid: ${formatCurrency(appt.deposit_paid)}` : "Deposit pending"}
           </p>
-          {canCancel && (
+          {canPayBalance && (
+            <button
+              onClick={handlePayBalance}
+              disabled={payingBalance}
+              className="mt-3 flex items-center gap-1.5 px-4 py-2 bg-[#b22222] hover:bg-[#cc2929] disabled:opacity-60 text-white rounded-full text-xs font-semibold tracking-wide uppercase transition-colors ml-auto"
+            >
+              <CreditCard size={11} />
+              {payingBalance ? "Redirecting…" : `Make Payment — ${formatCurrency(remaining)}`}
+            </button>
+          )}
+          {canCancel && !canPayBalance && (
             <button onClick={onCancel}
               className="mt-3 flex items-center gap-1 text-xs text-[#b22222]/60 hover:text-[#b22222] transition-colors ml-auto">
               <XCircle size={12} />

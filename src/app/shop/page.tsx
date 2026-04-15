@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Search, MessageCircle } from "lucide-react";
+import { Search, MessageCircle, CreditCard } from "lucide-react";
 import { FloatingPageNav } from "@/components/layout/FloatingPageNav";
 import { formatCurrency } from "@/lib/utils";
 import { businessWhatsAppHref } from "@/lib/contact";
 import { createClient } from "@/lib/supabase/client";
+import toast from "react-hot-toast";
 
 interface Product {
   id: string;
@@ -38,9 +39,32 @@ export default function ShopPage() {
            p.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const [payingId, setPayingId] = useState<string | null>(null);
+
   const inquire = (product: Product) => {
     const msg = `Hi Verene! I'm interested in: *${product.name}* (SKU: ${product.sku}) — ${formatCurrency(product.price)}.`;
     window.open(businessWhatsAppHref(msg), "_blank");
+  };
+
+  const handlePay = async (product: Product) => {
+    setPayingId(product.id);
+    try {
+      const res = await fetch("/api/payments/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount:          product.price / 100,  // pesewas → GHS
+          description:     `Verene Shop — ${product.name}`,
+          clientReference: `shop-${product.sku}-${Date.now()}`,
+        }),
+      });
+      const { paymentUrl, error } = await res.json();
+      if (error || !paymentUrl) { toast.error(error || "Could not start payment"); setPayingId(null); return; }
+      window.location.href = paymentUrl;
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+      setPayingId(null);
+    }
   };
 
   return (
@@ -178,23 +202,39 @@ export default function ShopPage() {
                 }}>
                   {product.description}
                 </p>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, paddingTop: 10, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: "#0a0a0a", letterSpacing: "-0.01em" }}>{formatCurrency(product.price)}</span>
+                <div style={{ paddingTop: 10, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: "#0a0a0a", letterSpacing: "-0.01em", display: "block", marginBottom: 8 }}>{formatCurrency(product.price)}</span>
                   {product.is_available ? (
-                    <button
-                      onClick={() => inquire(product)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 5, padding: "7px 12px",
-                        background: "#0a0a0a", color: "#fff", fontSize: 9, fontWeight: 700,
-                        letterSpacing: "0.12em", textTransform: "uppercase",
-                        borderRadius: 8, border: "none", cursor: "pointer", transition: "background 0.18s",
-                      }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#b22222"; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#0a0a0a"; }}
-                    >
-                      <MessageCircle size={10} />
-                      Enquire
-                    </button>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {/* Pay now */}
+                      <button
+                        onClick={() => handlePay(product)}
+                        disabled={payingId === product.id}
+                        style={{
+                          flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                          padding: "7px 8px", background: payingId === product.id ? "rgba(178,34,34,0.6)" : "#b22222",
+                          color: "#fff", fontSize: 8, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase",
+                          borderRadius: 8, border: "none", cursor: payingId === product.id ? "not-allowed" : "pointer", transition: "background 0.18s",
+                        }}
+                      >
+                        <CreditCard size={9} />
+                        {payingId === product.id ? "…" : "Make Payment"}
+                      </button>
+                      {/* WhatsApp enquiry */}
+                      <button
+                        onClick={() => inquire(product)}
+                        title="Enquire via WhatsApp"
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          padding: "7px 10px", background: "rgba(0,0,0,0.06)", color: "#0a0a0a",
+                          borderRadius: 8, border: "none", cursor: "pointer", transition: "background 0.18s", flexShrink: 0,
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,0,0,0.12)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,0,0,0.06)"; }}
+                      >
+                        <MessageCircle size={11} />
+                      </button>
+                    </div>
                   ) : (
                     <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(10,10,10,0.22)" }}>Unavailable</span>
                   )}
