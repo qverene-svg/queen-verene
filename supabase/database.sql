@@ -350,3 +350,19 @@ VALUES
     'Minimum 2 years experience. Strong portfolio of bridal and editorial looks. Available for weekends.'
   )
 ON CONFLICT DO NOTHING;
+
+
+-- =============================================================================
+-- 8. SAFETY PATCHES (live-schema alignment)
+-- =============================================================================
+-- Run-safe adjustments for already-existing environments.
+
+ALTER TABLE public.appointments
+  ALTER COLUMN payment_status SET DEFAULT 'unpaid';
+
+ALTER TABLE public.appointments
+  DROP CONSTRAINT IF EXISTS appointments_payment_status_check;
+
+ALTER TABLE public.appointments
+  ADD CONSTRAINT appointments_payment_status_check
+  CHECK (payment_status IN ('unpaid','deposit_paid','fully_paid','refunded'));
