@@ -205,13 +205,13 @@ export function AdminServicesPanel() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-black/[0.04] rounded-xl p-1 w-fit">
+      <div className="flex gap-1 mb-6 bg-white/[0.07] rounded-xl p-1 w-fit">
         {(["services", "categories"] as const).map((t) => (
           <button key={t} type="button"
             onClick={() => setTab(t)}
             className={cn(
               "px-4 py-2 rounded-lg text-xs font-semibold tracking-wider uppercase transition-all",
-              tab === t ? "bg-white text-[#0a0a0a] shadow-sm" : "text-[#0a0a0a]/40 hover:text-[#0a0a0a]/70"
+              tab === t ? "bg-white text-[#0a0a0a] shadow-sm" : "text-white/50 hover:text-white/80"
             )}
           >
             {t === "services" ? "Services" : "Categories"}
@@ -289,7 +289,7 @@ export function AdminServicesPanel() {
                 onChange={(e) => setNewCatName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addCategory()}
                 placeholder="Category name (e.g. Locs, Threading…)"
-                className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm focus:outline-none focus:border-[#b22222]/50"
+                className="flex-1 px-3 py-2 rounded-lg border border-black/10 text-sm text-[#0a0a0a] focus:outline-none focus:border-[#b22222]/50"
               />
               <Button onClick={addCategory} className="shrink-0">Add</Button>
               <Button variant="outline" onClick={() => { setAddingCat(false); setNewCatName(""); }} className="shrink-0">Cancel</Button>
@@ -342,7 +342,7 @@ export function AdminServicesPanel() {
             <label className="block text-xs font-semibold text-[#0a0a0a]/50 mb-1">Service Name</label>
             <input value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:border-[#b22222]/40 transition-colors" />
+              className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm text-[#0a0a0a] focus:outline-none focus:border-[#b22222]/40 transition-colors" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -350,13 +350,13 @@ export function AdminServicesPanel() {
               <label className="block text-xs font-semibold text-[#0a0a0a]/50 mb-1">Duration (minutes)</label>
               <input type="number" min={1} value={form.duration_minutes}
                 onChange={(e) => setForm({ ...form, duration_minutes: Number(e.target.value) })}
-                className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:border-[#b22222]/40 transition-colors" />
+                className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm text-[#0a0a0a] focus:outline-none focus:border-[#b22222]/40 transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-[#0a0a0a]/50 mb-1">Price (GHS)</label>
               <input type="number" step="0.01" min={0} value={form.priceGhs}
                 onChange={(e) => setForm({ ...form, priceGhs: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm focus:outline-none focus:border-[#b22222]/40 transition-colors" />
+                className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm text-[#0a0a0a] focus:outline-none focus:border-[#b22222]/40 transition-colors" />
             </div>
           </div>
 
@@ -364,7 +364,7 @@ export function AdminServicesPanel() {
             <label className="block text-xs font-semibold text-[#0a0a0a]/50 mb-1">Category</label>
             <select value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm bg-white focus:outline-none focus:border-[#b22222]/40 transition-colors">
+              className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm text-[#0a0a0a] bg-white focus:outline-none focus:border-[#b22222]/40 transition-colors">
               {categories.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
               ))}
@@ -378,7 +378,7 @@ export function AdminServicesPanel() {
             <label className="block text-xs font-semibold text-[#0a0a0a]/50 mb-1">Description</label>
             <textarea rows={3} value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm resize-none focus:outline-none focus:border-[#b22222]/40 transition-colors" />
+              className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm text-[#0a0a0a] resize-none focus:outline-none focus:border-[#b22222]/40 transition-colors" />
           </div>
 
           <AdminImageUpload label="Service image" folder="services"

@@ -57,7 +57,7 @@ export default function ShopPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount:          product.price / 100,  // pesewas → GHS
-          description:     `Verene Shop — ${product.name}`,
+          description:     `Verene Shop - ${product.name}`,
           clientReference,
         }),
       });

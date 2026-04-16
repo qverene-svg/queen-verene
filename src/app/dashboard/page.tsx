@@ -380,7 +380,7 @@ function AppointmentCard({ appt, onCancel }: { appt: Appointment; onCancel?: () 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount:           remaining / 100, // pesewas → GHS
-          description:      `Verene Balance Payment — ${appt.services?.name || "Beauty Service"}`,
+          description:      `Verene Balance Payment - ${appt.services?.name || "Beauty Service"}`,
           clientReference:  `balance-${appt.id}`,
         }),
       });

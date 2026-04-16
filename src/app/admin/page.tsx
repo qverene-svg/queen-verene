@@ -312,7 +312,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: remaining,
-          description: `Verene Balance Payment — ${payInitAppt.serviceName}`,
+          description: `Verene Balance Payment - ${payInitAppt.serviceName}`,
           clientReference: `balance-${payInitAppt.id}`,
           customerPhone: payInitAppt.phone,
           customerEmail: payInitAppt.email,
