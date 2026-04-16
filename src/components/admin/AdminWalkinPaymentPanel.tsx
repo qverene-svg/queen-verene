@@ -176,7 +176,6 @@ export function AdminWalkinPaymentPanel() {
         clientReference: ref,
         customerPhone:   phoneSafe,
         customerName:    customerName.trim(),
-        returnUrl:       `${window.location.origin}/payment-complete`,
       }),
     });
 
