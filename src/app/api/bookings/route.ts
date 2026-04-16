@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { formatPhone } from "@/lib/utils";
 import { addMinutes } from "date-fns";
+import { buildHubtelCheckoutUrl } from "@/lib/hubtelCheckout";
 
 export async function POST(req: NextRequest) {
   try {
@@ -102,17 +103,13 @@ export async function POST(req: NextRequest) {
     const host   = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
     const appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "https://www.queenverene.com");
 
-    // Initiate Hubtel payment
-    const { paymentUrl, hubtelError } = await initiateHubtelPayment({
-      amount:           deposit / 100, // pesewas → GHS
-      customerName,
-      customerPhone:    customerPhone ? formatPhone(customerPhone) : "",
-      customerEmail:    customerEmail || "",
-      description:      `Verene Appointment Deposit — ${serviceName || "Beauty Service"}`,
-      callbackUrl:      `${appUrl}/api/payments/callback`,
-      returnUrl:        `${appUrl}/dashboard`,
-      cancellationUrl:  `${appUrl}/services`,
-      clientReference:  appointment.id,
+    // Initiate Hubtel payment — uses shared lib identical to walkin/shop routes
+    const { paymentUrl, hubtelError } = await buildHubtelCheckoutUrl({
+      amount:          deposit / 100, // pesewas → GHS
+      customerPhone:   customerPhone ? formatPhone(customerPhone) : "",
+      description:     `Verene Appointment Deposit — ${serviceName || "Beauty Service"}`,
+      callbackUrl:     `${appUrl}/api/payments/callback`,
+      clientReference: appointment.id,
     });
 
     if (hubtelError) {
@@ -155,56 +152,6 @@ export async function POST(req: NextRequest) {
 }
 
 // ── Hubtel ────────────────────────────────────────────────────────────────────
-
-async function initiateHubtelPayment({
-  amount, customerPhone,
-  description, callbackUrl, clientReference,
-}: {
-  amount: number; customerName: string; customerPhone: string; customerEmail: string;
-  description: string; callbackUrl: string; returnUrl: string;
-  cancellationUrl: string; clientReference: string;
-}): Promise<{ paymentUrl: string | null; hubtelError: string | null }> {
-  const clientId        = process.env.HUBTEL_CLIENT_ID;
-  const clientSecret    = process.env.HUBTEL_CLIENT_SECRET;
-  // IMPORTANT: This must be the short numeric Hubtel merchant account ID (e.g. "11684"),
-  // NOT a phone number. Find it in your Hubtel merchant portal → Settings → Account.
-  const merchantAccount = process.env.HUBTEL_MERCHANT_ACCOUNT_NUMBER;
-
-  if (!clientId || !clientSecret || clientId === "your_hubtel_client_id") {
-    return { paymentUrl: null, hubtelError: "Hubtel credentials not configured" };
-  }
-  if (!merchantAccount) {
-    return { paymentUrl: null, hubtelError: "HUBTEL_MERCHANT_ACCOUNT_NUMBER not set" };
-  }
-
-  try {
-    // We use the Hubtel Web Checkout SDK redirect approach (unified-pay.hubtel.com/pay).
-    // The payproxyapi.hubtel.com/items/initiate endpoint requires IP whitelisting —
-    // incompatible with Vercel's dynamic serverless IPs. The redirect URL approach
-    // requires no server-to-server call and has no IP restriction.
-    // Docs: https://github.com/hubtel/hubtel-web-merchant-checkout-sdk
-    const basicAuth  = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-    const msisdn     = (customerPhone || "").replace(/^\+/, ""); // 233XXXXXXXXX (no +)
-
-    const params = new URLSearchParams({
-      amount:               String(amount),
-      purchaseDescription:  description,
-      customerPhoneNumber:  msisdn,
-      clientReference,
-      callbackUrl,
-      merchantAccount,      // short numeric ID from Hubtel portal, e.g. "11684"
-      basicAuth,
-      integrationType:      "External",
-    });
-
-    const paymentUrl = `https://unified-pay.hubtel.com/pay?${params.toString()}`;
-    console.log("[Hubtel] Checkout URL built (merchantAccount:", merchantAccount, ")");
-    return { paymentUrl, hubtelError: null };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown Hubtel error";
-    return { paymentUrl: null, hubtelError: msg };
-  }
-}
 
 // ── Pending booking email ──────────────────────────────────────────────────────
 
