@@ -1,8 +1,6 @@
 /**
  * Hubtel Web Checkout SDK — unified-pay.hubtel.com/pay
- *
- * This is the EXACT code extracted from /api/bookings/route.ts which is
- * confirmed working in production. Used by booking, walk-in, and shop payments.
+ * Shared by booking, walk-in, and shop payment routes.
  *
  * Docs: https://github.com/hubtel/hubtel-web-merchant-checkout-sdk
  *
@@ -34,14 +32,16 @@ export async function buildHubtelCheckoutUrl({
   }
 
   try {
-    // ── Exact copy of the working booking payment code ─────────────────────────
     const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-    const msisdn    = (customerPhone || "").replace(/^\+/, ""); // 233XXXXXXXXX (no +)
+    const msisdn    = (customerPhone || "").replace(/^\+/, ""); // strip leading + only
 
+    // Build base params — do NOT include customerPhoneNumber in the object literal
+    // when it is empty. URLSearchParams always serialises every key in the object,
+    // so { customerPhoneNumber: "" } produces "customerPhoneNumber=" in the URL
+    // which Hubtel treats as an invalid phone and returns "Validation Errors".
     const params = new URLSearchParams({
       amount:              String(amount),
       purchaseDescription: description,
-      customerPhoneNumber: msisdn,
       clientReference,
       callbackUrl,
       merchantAccount,
@@ -49,10 +49,15 @@ export async function buildHubtelCheckoutUrl({
       integrationType:     "External",
     });
 
+    // Only add customerPhoneNumber when a real value exists
+    if (msisdn) params.set("customerPhoneNumber", msisdn);
+
     const paymentUrl = `https://unified-pay.hubtel.com/pay?${params.toString()}`;
-    console.log("[Hubtel] Checkout URL built (merchantAccount:", merchantAccount, ")");
+
+    console.log("[Hubtel] URL built — ref:", clientReference, "| amount:", amount,
+      "| phone:", msisdn || "(none)", "| merchant:", merchantAccount);
+
     return { paymentUrl, hubtelError: null };
-    // ──────────────────────────────────────────────────────────────────────────
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown Hubtel error";
     return { paymentUrl: null, hubtelError: msg };

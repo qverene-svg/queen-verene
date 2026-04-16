@@ -49,9 +49,10 @@ export default function ShopPage() {
   const handlePay = async (product: Product) => {
     setPayingId(product.id);
     try {
-      // Hubtel/client logs: keep reference alphanumeric + hyphen (SKU can contain spaces/symbols).
-      const skuSafe = product.sku.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "item";
-      const clientReference = `shop-${skuSafe}-${Date.now()}`;
+      // Keep clientReference under 50 chars (Hubtel limit).
+      // "shop-" (5) + sku (12) + "-" (1) + last-8-of-timestamp (8) = 26 chars max.
+      const skuSafe = product.sku.replace(/[^a-zA-Z0-9-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 12) || "item";
+      const clientReference = `shop-${skuSafe}-${String(Date.now()).slice(-8)}`;
       const res = await fetch("/api/payments/shop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
