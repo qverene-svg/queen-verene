@@ -52,7 +52,7 @@ export default function ShopPage() {
       // Hubtel/client logs: keep reference alphanumeric + hyphen (SKU can contain spaces/symbols).
       const skuSafe = product.sku.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "item";
       const clientReference = `shop-${skuSafe}-${Date.now()}`;
-      const res = await fetch("/api/payments/initiate", {
+      const res = await fetch("/api/payments/shop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -167,7 +167,7 @@ export function AdminWalkinPaymentPanel() {
     const ref = hubtelSafeWalkinClientReference();
     const phoneSafe = hubtelSafeWalkinPhone(phone);
 
-    const res = await fetch("/api/payments/initiate", {
+    const res = await fetch("/api/payments/walkin", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -175,7 +175,6 @@ export function AdminWalkinPaymentPanel() {
         description:     descSafe,
         clientReference: ref,
         customerPhone:   phoneSafe,
-        customerName:    customerName.trim(),
       }),
     });
 

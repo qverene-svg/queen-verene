@@ -375,13 +375,14 @@ function AppointmentCard({ appt, onCancel }: { appt: Appointment; onCancel?: () 
   const handlePayBalance = async () => {
     setPayingBalance(true);
     try {
-      const res = await fetch("/api/payments/initiate", {
+      const res = await fetch("/api/payments/walkin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount:           remaining / 100, // pesewas → GHS
           description:      `Verene Balance Payment - ${appt.services?.name || "Beauty Service"}`,
           clientReference:  `balance-${appt.id}`,
+          customerPhone:    appt.customer?.phone || "",
         }),
       });
       const { paymentUrl, error } = await res.json();

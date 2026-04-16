@@ -307,7 +307,7 @@ export default function AdminPage() {
     setPayLinkLoading(true);
     const remaining = (payInitAppt.amount - payInitAppt.depositPaid) / 100;
     try {
-      const res = await fetch("/api/payments/initiate", {
+      const res = await fetch("/api/payments/walkin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -315,7 +315,6 @@ export default function AdminPage() {
           description: `Verene Balance Payment - ${payInitAppt.serviceName}`,
           clientReference: `balance-${payInitAppt.id}`,
           customerPhone: payInitAppt.phone,
-          customerEmail: payInitAppt.email,
         }),
       });
       const json = await res.json();
