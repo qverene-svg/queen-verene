@@ -348,7 +348,7 @@ export default function ShopPage() {
                       <p style={{ fontSize: 18, fontWeight: 800, color: "#0a0a0a", margin: 0 }}>{formatCurrency(checkoutProduct.price)}</p>
                     </div>
                     <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: checkoutFulfillment === "delivery" ? "#b22222" : "rgba(10,10,10,0.3)", letterSpacing: "0.1em" }}>
-                      {checkoutFulfillment === "delivery" ? "+ Delivery fee" : "Pick up in store"}
+                      {checkoutFulfillment === "delivery" ? "Delivery" : "Pick up in store"}
                     </span>
                   </div>
 
