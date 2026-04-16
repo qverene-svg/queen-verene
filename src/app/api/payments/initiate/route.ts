@@ -36,12 +36,28 @@ function hubtelSafePurchaseDescription(raw: string): string {
  *  - Shop item payments
  *  - Admin-initiated customer payment links
  *
- * Body: { amount (GHS float), description, clientReference, customerPhone?, customerEmail?, customerName? }
+ * Body: {
+ *   amount (GHS float),
+ *   description,
+ *   clientReference,
+ *   customerPhone?,
+ *   customerEmail?,
+ *   customerName?,
+ *   returnUrl?  ← where Hubtel redirects the user after payment (required by Hubtel)
+ * }
  * Returns: { paymentUrl }
  */
 export async function POST(req: NextRequest) {
   try {
-    const { amount, description, clientReference, customerPhone, customerEmail } = await req.json();
+    const {
+      amount,
+      description,
+      clientReference,
+      customerPhone,
+      customerEmail,
+      customerName,
+      returnUrl: returnUrlOverride,
+    } = await req.json();
 
     if (!amount || !description || !clientReference) {
       return NextResponse.json({ error: "amount, description, and clientReference are required" }, { status: 400 });
@@ -55,7 +71,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Hubtel payment is not configured" }, { status: 503 });
     }
 
-    // Derive callback URL from the request origin
+    // Derive app base URL from the request origin
     const proto  = req.headers.get("x-forwarded-proto") || "https";
     const host   = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
     const appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "https://www.queenverene.com");
@@ -63,23 +79,40 @@ export async function POST(req: NextRequest) {
     const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
     const msisdn    = (customerPhone || "").replace(/^\+/, "");
 
-    const safeRef = hubtelSafeClientReference(clientReference);
+    const safeRef  = hubtelSafeClientReference(clientReference);
     const safeDesc = hubtelSafePurchaseDescription(description);
-    const enc = encodeURIComponent;
+    const enc      = encodeURIComponent;
+
+    // returnUrl: where Hubtel redirects the customer after payment completes/fails
+    // Hubtel requires this field — without it they show "Validation Errors"
+    const returnUrl = returnUrlOverride || `${appUrl}/payment-complete`;
 
     const q: string[] = [
       `amount=${enc(String(Number(amount).toFixed(2)))}`,
       `purchaseDescription=${enc(safeDesc)}`,
       `clientReference=${enc(safeRef)}`,
       `callbackUrl=${enc(`${appUrl}/api/payments/callback`)}`,
+      `returnUrl=${enc(returnUrl)}`,
       `merchantAccount=${enc(merchantAccount)}`,
       `basicAuth=${enc(basicAuth)}`,
       `integrationType=${enc("External")}`,
     ];
-    if (msisdn) q.push(`customerPhoneNumber=${enc(msisdn)}`);
+    if (msisdn)       q.push(`customerPhoneNumber=${enc(msisdn)}`);
+    if (customerEmail) q.push(`customerEmail=${enc(customerEmail)}`);
+    if (customerName)  q.push(`customerName=${enc(customerName)}`);
 
     const paymentUrl = `https://unified-pay.hubtel.com/pay?${q.join("&")}`;
-    console.log("[Payments/initiate] ref (sanitized):", safeRef, "len:", safeRef.length, "amount:", amount);
+
+    console.log("[Payments/initiate] params:", {
+      ref:         safeRef,
+      refLen:      safeRef.length,
+      amount:      Number(amount).toFixed(2),
+      desc:        safeDesc,
+      returnUrl,
+      callbackUrl: `${appUrl}/api/payments/callback`,
+      merchantAccount: merchantAccount.slice(0, 4) + "****", // partial for security
+      hasAuth:     !!basicAuth,
+    });
 
     return NextResponse.json({ paymentUrl });
   } catch (err) {

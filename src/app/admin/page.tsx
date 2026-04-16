@@ -316,6 +316,7 @@ export default function AdminPage() {
           clientReference: `balance-${payInitAppt.id}`,
           customerPhone: payInitAppt.phone,
           customerEmail: payInitAppt.email,
+          returnUrl: `${window.location.origin}/payment-complete`,
         }),
       });
       const json = await res.json();

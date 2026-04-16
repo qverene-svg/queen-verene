@@ -59,6 +59,7 @@ export default function ShopPage() {
           amount:          product.price / 100,  // pesewas → GHS
           description:     `Verene Shop - ${product.name}`,
           clientReference,
+          returnUrl:       `${window.location.origin}/payment-complete`,
         }),
       });
       const { paymentUrl, error } = await res.json();
