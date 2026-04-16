@@ -6,6 +6,7 @@ import {
   Copy, Check, ExternalLink, Smartphone, RefreshCw, QrCode,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { formatPhone } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -151,7 +152,7 @@ export function AdminWalkinPaymentPanel() {
   const [copied,       setCopied]       = useState(false);
   const [result,       setResult]       = useState<PaymentResult | null>(null);
 
-  const canSubmit = customerName.trim() && amountGhs && Number(amountGhs) > 0 && description.trim();
+  const canSubmit = customerName.trim() && phone.trim() && amountGhs && Number(amountGhs) > 0 && description.trim();
 
   // ── Generate payment link ──────────────────────────────────────────────────
 
@@ -388,15 +389,13 @@ export function AdminWalkinPaymentPanel() {
                   onChange={setCustomerName} placeholder="Akua Mensah" required
                 />
                 <Field
-                  label="Phone Number (optional)" type="tel" value={phone}
-                  onChange={setPhone} placeholder="0244 000 000"
+                  label="Phone Number" type="tel" value={phone}
+                  onChange={setPhone} placeholder="0244 000 000" required
                 />
               </div>
-              {phone && (
-                <p style={{ marginTop: 10, fontSize: 11, color: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", gap: 5 }}>
-                  <Phone size={10} /> Payment link will be sent to this number via SMS after generation
-                </p>
-              )}
+              <p style={{ marginTop: 10, fontSize: 11, color: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", gap: 5 }}>
+                <Phone size={10} /> A phone number is required (same as booking flow) for stable Hubtel checkout links
+              </p>
             </div>
 
             {/* Payment details */}

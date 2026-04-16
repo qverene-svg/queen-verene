@@ -33,28 +33,24 @@ export async function buildHubtelCheckoutUrl({
 
   try {
     const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-    const msisdn    = (customerPhone || "").replace(/^\+/, ""); // strip leading + only
+    const msisdn = (customerPhone || "").replace(/^\+/, "").replace(/[^\d]/g, "");
+    const safeRef = sanitizeClientReference(clientReference);
+    const safeDesc = sanitizePurchaseDescription(description);
+    const enc = encodeURIComponent;
+    const q: string[] = [
+      `amount=${enc(String(Number(amount).toFixed(2)))}`,
+      `purchaseDescription=${enc(safeDesc)}`,
+      `clientReference=${enc(safeRef)}`,
+      `callbackUrl=${enc(callbackUrl)}`,
+      `merchantAccount=${enc(merchantAccount)}`,
+      `basicAuth=${enc(basicAuth)}`,
+      `integrationType=${enc("External")}`,
+    ];
+    if (msisdn) q.push(`customerPhoneNumber=${enc(msisdn)}`);
 
-    // Build base params — do NOT include customerPhoneNumber in the object literal
-    // when it is empty. URLSearchParams always serialises every key in the object,
-    // so { customerPhoneNumber: "" } produces "customerPhoneNumber=" in the URL
-    // which Hubtel treats as an invalid phone and returns "Validation Errors".
-    const params = new URLSearchParams({
-      amount:              String(amount),
-      purchaseDescription: description,
-      clientReference,
-      callbackUrl,
-      merchantAccount,
-      basicAuth,
-      integrationType:     "External",
-    });
+    const paymentUrl = `https://unified-pay.hubtel.com/pay?${q.join("&")}`;
 
-    // Only add customerPhoneNumber when a real value exists
-    if (msisdn) params.set("customerPhoneNumber", msisdn);
-
-    const paymentUrl = `https://unified-pay.hubtel.com/pay?${params.toString()}`;
-
-    console.log("[Hubtel] URL built — ref:", clientReference, "| amount:", amount,
+    console.log("[Hubtel] URL built — ref:", safeRef, "| amount:", amount,
       "| phone:", msisdn || "(none)", "| merchant:", merchantAccount);
 
     return { paymentUrl, hubtelError: null };
@@ -62,4 +58,25 @@ export async function buildHubtelCheckoutUrl({
     const msg = err instanceof Error ? err.message : "Unknown Hubtel error";
     return { paymentUrl: null, hubtelError: msg };
   }
+}
+
+function sanitizeClientReference(raw: string): string {
+  const value = String(raw)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return value.slice(0, 80) || "ref";
+}
+
+function sanitizePurchaseDescription(raw: string): string {
+  const value = String(raw)
+    .replace(/[\u2013\u2014\u2212]/g, "-")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return value.slice(0, 200) || "Verene payment";
 }

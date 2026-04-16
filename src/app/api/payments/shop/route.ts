@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildHubtelCheckoutUrl } from "@/lib/hubtelCheckout";
+import { formatPhone } from "@/lib/utils";
 
 /**
  * POST /api/payments/shop
- * Shop product payments.
- * Uses the identical Hubtel checkout code as /api/bookings/route.ts.
+ * Shop product payments — same flow as the working booking route.
+ * Requires customerPhone (collected by the shop checkout modal).
  */
 export async function POST(req: NextRequest) {
   try {
-    const { amount, description, clientReference } = await req.json();
+    const { amount, description, clientReference, customerPhone, fulfillment } = await req.json();
 
-    if (!amount || !description || !clientReference) {
+    if (!amount || !description || !clientReference || !customerPhone) {
       return NextResponse.json(
-        { error: "amount, description and clientReference are required" },
+        { error: "amount, description, clientReference and customerPhone are required" },
         { status: 400 }
       );
     }
@@ -22,11 +23,14 @@ export async function POST(req: NextRequest) {
     const appUrl      = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "https://www.queenverene.com");
     const callbackUrl = `${appUrl}/api/payments/callback`;
 
+    const formattedPhone = formatPhone(customerPhone);
+    const deliveryTag = fulfillment === "delivery" ? " (Delivery)" : " (Pick up)";
+
     const { paymentUrl, hubtelError } = await buildHubtelCheckoutUrl({
       amount,
-      description,
+      description: `${description}${deliveryTag}`,
       clientReference,
-      customerPhone: "", // no phone for shop purchases — same as booking with email-only customer
+      customerPhone: formattedPhone,
       callbackUrl,
     });
 

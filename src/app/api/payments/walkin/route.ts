@@ -11,9 +11,9 @@ export async function POST(req: NextRequest) {
   try {
     const { amount, description, clientReference, customerPhone } = await req.json();
 
-    if (!amount || !description || !clientReference) {
+    if (!amount || !description || !clientReference || !customerPhone) {
       return NextResponse.json(
-        { error: "amount, description and clientReference are required" },
+        { error: "amount, description, clientReference and customerPhone are required" },
         { status: 400 }
       );
     }
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const callbackUrl = `${appUrl}/api/payments/callback`;
 
     // Format phone exactly as the booking route does before passing to Hubtel
-    const formattedPhone = customerPhone ? formatPhone(customerPhone) : "";
+    const formattedPhone = formatPhone(customerPhone);
 
     const { paymentUrl, hubtelError } = await buildHubtelCheckoutUrl({
       amount,
