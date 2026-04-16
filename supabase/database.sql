@@ -35,14 +35,19 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 --   viewer   — read-only access to admin dashboard (e.g. silent partner)
 --   customer — default for salon clients booking appointments
 CREATE TABLE IF NOT EXISTS public.users (
-  id          UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  full_name   TEXT NOT NULL,
-  email       TEXT NOT NULL UNIQUE,
-  phone       TEXT,
-  role        TEXT NOT NULL DEFAULT 'customer'
-                CHECK (role IN ('admin', 'manager', 'staff', 'viewer', 'customer')),
-  avatar_url  TEXT,
-  created_at  TIMESTAMPTZ DEFAULT NOW()
+  id             UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  full_name      TEXT NOT NULL,
+  email          TEXT NOT NULL UNIQUE,
+  phone          TEXT,
+  role           TEXT NOT NULL DEFAULT 'customer'
+                   CHECK (role IN ('admin', 'manager', 'staff', 'viewer', 'customer')),
+  avatar_url     TEXT,
+  -- portal_access: NULL = show all portals allowed by role (default behaviour).
+  -- When set, only the listed portals are shown in the admin sidebar for this user.
+  -- Allowed values match admin NavItem labels:
+  --   'Overview', 'Services', 'Shop', 'Careers', 'New Booking', 'Walk-in Pay', 'Users'
+  portal_access  TEXT[]      DEFAULT NULL,
+  created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Staff profiles
@@ -448,3 +453,20 @@ END $$;
 -- ── phone_otps: purge expired rows ───────────────────────────────────────────
 -- Safe to re-run; removes codes older than 1 hour to keep the table tidy.
 DELETE FROM public.phone_otps WHERE expires_at < NOW() - INTERVAL '1 hour';
+
+-- ── users: portal_access column ──────────────────────────────────────────────
+-- Stores which admin portal sections each user can access.
+-- NULL = fall back to role-based defaults (existing behaviour preserved).
+-- Allowed values: 'Overview', 'Services', 'Shop', 'Careers',
+--                 'New Booking', 'Walk-in Pay', 'Users'
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name   = 'users'
+       AND column_name  = 'portal_access'
+  ) THEN
+    ALTER TABLE public.users ADD COLUMN portal_access TEXT[] DEFAULT NULL;
+  END IF;
+END $$;
