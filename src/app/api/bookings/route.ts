@@ -110,6 +110,7 @@ export async function POST(req: NextRequest) {
       description:     `Verene Appointment Deposit — ${serviceName || "Beauty Service"}`,
       callbackUrl:     `${appUrl}/api/payments/callback`,
       clientReference: appointment.id,
+      returnUrl:       `${appUrl}/payment-complete`,
     });
 
     if (hubtelError) {

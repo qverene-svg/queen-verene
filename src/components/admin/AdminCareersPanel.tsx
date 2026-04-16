@@ -181,7 +181,7 @@ export function AdminCareersPanel() {
           <input
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
-            className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm"
+            className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm text-[#0a0a0a]"
           />
           <div>
             <label className="block text-xs font-semibold text-[#0a0a0a]/50 mb-1">Description</label>
@@ -189,7 +189,7 @@ export function AdminCareersPanel() {
               rows={4}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm resize-none"
+              className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm text-[#0a0a0a] resize-none"
             />
           </div>
           <div>
@@ -198,7 +198,7 @@ export function AdminCareersPanel() {
               rows={4}
               value={form.requirements}
               onChange={(e) => setForm({ ...form, requirements: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm resize-none"
+              className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm text-[#0a0a0a] resize-none"
             />
           </div>
           <label className="flex items-center gap-2 text-sm text-[#0a0a0a]/70">

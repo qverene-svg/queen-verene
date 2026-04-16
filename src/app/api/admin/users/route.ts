@@ -28,7 +28,7 @@ export async function GET() {
   const db = supabase as any;
   const { data, error } = await db
     .from("users")
-    .select("id, email, full_name, role, created_at, phone")
+    .select("id, email, full_name, role, created_at, phone, portal_access")
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   const auth = await requireAdmin();
   if (auth instanceof NextResponse) return auth;
 
-  const { email, password, full_name, role, phone } = await req.json();
+  const { email, password, full_name, role, phone, portal_access } = await req.json();
 
   if (!email || !password || !full_name || !role) {
     return NextResponse.json({ error: "email, password, full_name, and role are required" }, { status: 400 });
@@ -69,13 +69,15 @@ export async function POST(req: NextRequest) {
   }
 
   // Insert into users profile table
+  // Note: portal_access requires the column: ALTER TABLE users ADD COLUMN portal_access TEXT[] DEFAULT NULL;
   const { error: dbErr } = await db.from("users").upsert({
-    id:         authData.user.id,
+    id:            authData.user.id,
     email,
     full_name,
-    role:       role.toLowerCase(),
-    phone:      phone || null,
-    created_at: new Date().toISOString(),
+    role:          role.toLowerCase(),
+    phone:         phone || null,
+    portal_access: portal_access || null,
+    created_at:    new Date().toISOString(),
   });
 
   if (dbErr) {
@@ -94,7 +96,7 @@ export async function PATCH(req: NextRequest) {
   const auth = await requireAdmin();
   if (auth instanceof NextResponse) return auth;
 
-  const { id, role, full_name, phone } = await req.json();
+  const { id, role, full_name, phone, portal_access } = await req.json();
   if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
   const supabase = await createAdminClient();
@@ -102,9 +104,12 @@ export async function PATCH(req: NextRequest) {
   const db = supabase as any;
 
   const updates: Record<string, unknown> = {};
-  if (role)      updates.role      = role.toLowerCase();
-  if (full_name) updates.full_name = full_name;
-  if (phone !== undefined) updates.phone = phone || null;
+  if (role)                     updates.role          = role.toLowerCase();
+  if (full_name)                updates.full_name     = full_name;
+  if (phone !== undefined)      updates.phone         = phone || null;
+  // portal_access: null = use role defaults; [] = no portals; ["Services","Shop",...] = specific portals
+  // Requires: ALTER TABLE users ADD COLUMN portal_access TEXT[] DEFAULT NULL;
+  if (portal_access !== undefined) updates.portal_access = portal_access || null;
 
   const { error } = await db.from("users").update(updates).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

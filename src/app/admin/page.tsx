@@ -121,12 +121,13 @@ function ChartTooltip({ active, payload, label, formatter }: {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
-  const [screen,    setScreen]    = useState<Screen>("checking");
-  const [email,     setEmail]     = useState("");
-  const [password,  setPassword]  = useState("");
-  const [showPw,    setShowPw]    = useState(false);
-  const [loading,   setLoading]   = useState(false);
-  const [role,      setRole]      = useState<string | null>(null);
+  const [screen,       setScreen]       = useState<Screen>("checking");
+  const [email,        setEmail]        = useState("");
+  const [password,     setPassword]     = useState("");
+  const [showPw,       setShowPw]       = useState(false);
+  const [loading,      setLoading]      = useState(false);
+  const [role,         setRole]         = useState<string | null>(null);
+  const [portalAccess, setPortalAccess] = useState<string[] | null>(null);
   const [activeNav, setActiveNav] = useState<NavItem>("Overview");
   const [sideOpen,  setSideOpen]  = useState(false);
   const [search,    setSearch]    = useState("");
@@ -139,6 +140,13 @@ export default function AdminPage() {
   const canManage = role === "admin" || role === "manager";
   const isAdmin   = role === "admin";
 
+  /** Returns true if the current user has access to a given portal.
+   *  If portal_access is null, falls back to role-based defaults. */
+  const hasPortal = (label: NavItem): boolean => {
+    if (!portalAccess || portalAccess.length === 0) return true; // no override → role decides
+    return portalAccess.includes(label);
+  };
+
   // Booking details drawer
   const [detailAppt, setDetailAppt] = useState<Appointment | null>(null);
 
@@ -150,13 +158,13 @@ export default function AdminPage() {
 
   type NavDef = { icon: React.ElementType; label: NavItem; restricted: boolean };
   const NAV_ITEMS: NavDef[] = [
-    { icon: LayoutDashboard, label: "Overview", restricted: false      },
-    { icon: Scissors,        label: "Services", restricted: !canManage },
-    { icon: Package,         label: "Shop",     restricted: !canManage },
-    { icon: Briefcase,       label: "Careers",  restricted: !canManage },
-    { icon: UserCog,         label: "Users",       restricted: !isAdmin   },
-    { icon: CalendarPlus,    label: "New Booking", restricted: !canManage },
-    { icon: Wallet,          label: "Walk-in Pay", restricted: !canManage },
+    { icon: LayoutDashboard, label: "Overview",    restricted: false },
+    { icon: Scissors,        label: "Services",    restricted: !canManage || !hasPortal("Services")    },
+    { icon: Package,         label: "Shop",        restricted: !canManage || !hasPortal("Shop")        },
+    { icon: Briefcase,       label: "Careers",     restricted: !canManage || !hasPortal("Careers")     },
+    { icon: UserCog,         label: "Users",       restricted: !isAdmin   || !hasPortal("Users")       },
+    { icon: CalendarPlus,    label: "New Booking", restricted: !canManage || !hasPortal("New Booking") },
+    { icon: Wallet,          label: "Walk-in Pay", restricted: !canManage || !hasPortal("Walk-in Pay") },
   ];
   const visibleNav = NAV_ITEMS.filter((n) => !n.restricted);
 
@@ -246,10 +254,11 @@ export default function AdminPage() {
     const sb = createClient();
     sb.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { setScreen("login"); return; }
-      const { data: p } = await sb.from("users").select("role").eq("id", session.user.id).single();
-      const profile = p as { role: string } | null;
+      const { data: p } = await sb.from("users").select("role, portal_access").eq("id", session.user.id).single();
+      const profile = p as { role: string; portal_access: string[] | null } | null;
       if (!profile || !isAllowedStaffRole(profile.role)) { setScreen("login"); return; }
       setRole(profile.role.toLowerCase());
+      setPortalAccess(profile.portal_access || null);
       setScreen("dashboard");
       loadAppointments();
     });
@@ -270,23 +279,26 @@ export default function AdminPage() {
         : authErr.message);
       setLoading(false); return;
     }
-    const { data: profile, error: pErr } = await sb.from("users").select("role").eq("id", data.user.id).single();
+    const { data: profile, error: pErr } = await sb.from("users").select("role, portal_access").eq("id", data.user.id).single();
     if (pErr || !profile) {
       toast.error("Profile not found. Run the INSERT SQL in Supabase.");
       await sb.auth.signOut(); setLoading(false); return;
     }
-    const p = profile as { role: string };
+    const p = profile as { role: string; portal_access: string[] | null };
     if (!isAllowedStaffRole(p.role)) {
       toast.error(`Role "${p.role}" is not allowed.`);
       await sb.auth.signOut(); setLoading(false); return;
     }
-    setRole(p.role.toLowerCase()); setScreen("dashboard"); setLoading(false);
+    setRole(p.role.toLowerCase());
+    setPortalAccess(p.portal_access || null);
+    setScreen("dashboard");
+    setLoading(false);
     loadAppointments();
   };
 
   const handleLogout = async () => {
     await createClient().auth.signOut();
-    setRole(null); setEmail(""); setPassword(""); setScreen("login");
+    setRole(null); setPortalAccess(null); setEmail(""); setPassword(""); setScreen("login");
   };
 
   const openPayInitModal = (appt: Appointment) => {

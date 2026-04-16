@@ -13,12 +13,14 @@ export async function buildHubtelCheckoutUrl({
   clientReference,
   customerPhone,
   callbackUrl,
+  returnUrl,
 }: {
   amount: number;
   description: string;
   clientReference: string;
   customerPhone: string;
   callbackUrl: string;
+  returnUrl?: string;
 }): Promise<{ paymentUrl: string | null; hubtelError: string | null }> {
   const clientId        = process.env.HUBTEL_CLIENT_ID;
   const clientSecret    = process.env.HUBTEL_CLIENT_SECRET;
@@ -47,6 +49,7 @@ export async function buildHubtelCheckoutUrl({
       `integrationType=${enc("External")}`,
     ];
     if (msisdn) q.push(`customerPhoneNumber=${enc(msisdn)}`);
+    if (returnUrl) q.push(`returnUrl=${enc(returnUrl)}`);
 
     const paymentUrl = `https://unified-pay.hubtel.com/pay?${q.join("&")}`;
 

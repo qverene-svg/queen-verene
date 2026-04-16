@@ -396,7 +396,7 @@ export default function JobsPage() {
 
       {/* ── Application modal ── */}
       <Modal open={applying} onClose={() => setApplying(false)} title={`Apply — ${selected?.title}`} size="lg">
-        <div className="space-y-6">
+        <div className="space-y-6" style={{ color: "#0a0a0a" }}>
           <Input label="Full Name *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Akua Mensah" />
           <Input label="Email *" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" />
           <Input label="Phone *" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="0244 000 000" />
