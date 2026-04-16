@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 /**
  * POST /api/payments/walkin
- * Generates a Hubtel unified-pay checkout URL for a walk-in customer.
- * Uses the same URL-building approach as /api/bookings/route.ts (confirmed working).
- *
- * Body: { amount (GHS), description, clientReference, customerPhone?, customerName? }
- * Returns: { paymentUrl }
+ * Generates a Hubtel unified-pay checkout URL for a walk-in or balance payment.
+ * Mirrors the confirmed-working booking route exactly:
+ *  - Phone converted to 233XXXXXXXXX format (same as formatPhone → strip +)
+ *  - customerPhoneNumber omitted entirely when empty (not sent as blank string)
  */
 export async function POST(req: NextRequest) {
   try {
@@ -30,19 +29,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "HUBTEL_MERCHANT_ACCOUNT_NUMBER not set" }, { status: 503 });
     }
 
-    const proto      = req.headers.get("x-forwarded-proto") || "https";
-    const host       = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
-    const appUrl     = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "https://www.queenverene.com");
+    const proto       = req.headers.get("x-forwarded-proto") || "https";
+    const host        = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+    const appUrl      = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "https://www.queenverene.com");
     const callbackUrl = `${appUrl}/api/payments/callback`;
 
     const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-    const msisdn    = (customerPhone || "").replace(/^\+/, "");
 
-    // Identical to the working booking URL builder
+    // Convert phone to 233XXXXXXXXX — same logic as formatPhone() + strip '+'
+    // Used by the booking route and confirmed working with Hubtel
+    const digits = (customerPhone || "").replace(/\D/g, "");
+    let msisdn = "";
+    if (digits) {
+      if (digits.startsWith("233"))     msisdn = digits;
+      else if (digits.startsWith("0"))  msisdn = "233" + digits.slice(1);
+      else                              msisdn = "233" + digits;
+    }
+
     const params = new URLSearchParams({
       amount:              String(amount),
       purchaseDescription: description,
-      customerPhoneNumber: msisdn,
       clientReference,
       callbackUrl,
       merchantAccount,
@@ -50,8 +56,11 @@ export async function POST(req: NextRequest) {
       integrationType:     "External",
     });
 
+    // Only add customerPhoneNumber when non-empty — blank value causes Hubtel validation error
+    if (msisdn) params.set("customerPhoneNumber", msisdn);
+
     const paymentUrl = `https://unified-pay.hubtel.com/pay?${params.toString()}`;
-    console.log("[walkin/payment] ref:", clientReference, "amount:", amount, "merchant:", merchantAccount);
+    console.log("[walkin/payment] ref:", clientReference, "amount:", amount, "phone:", msisdn || "(none)");
 
     return NextResponse.json({ paymentUrl });
   } catch (err) {

@@ -136,8 +136,7 @@ function hubtelSafeWalkinClientReference(): string {
 
 function hubtelSafeWalkinPhone(raw: string): string | undefined {
   const t = raw.trim().replace(/\s+/g, "");
-  if (!t) return undefined;
-  return t.replace(/^\+/, "");
+  return t || undefined; // pass raw value — server converts to 233XXXXXXXXX format
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────────
