@@ -161,7 +161,7 @@ export function Footer() {
                 Business Hours
               </p>
               <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 4 }}>Mon – Sat: 9:00 AM – 7:00 PM</p>
-              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>Sunday: 11:00 AM – 5:00 PM</p>
+              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>Sunday: 2:00 PM – 7:00 PM</p>
             </div>
           </div>
         </div>
