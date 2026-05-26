@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { formatPhone } from "@/lib/utils";
-
-/** Generate a 6-digit numeric OTP */
-function generateOtp(): string {
-  return Math.floor(100_000 + Math.random() * 900_000).toString();
-}
+import { generateOtp } from "@/lib/auth/otp";
 
 /**
  * POST /api/auth/send-phone-otp

@@ -1,31 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { formatPhone } from "@/lib/utils";
+import { normalizeAuthEmail } from "@/lib/auth/normalizeEmail";
 import { createLoginSessionToken } from "@/lib/auth/otp";
 
 /**
- * POST /api/auth/verify-phone-otp
- * Verifies the 6-digit OTP for a phone number, marks it as used,
+ * POST /api/auth/verify-email-otp
+ * Verifies the 6-digit OTP for an email address, marks it as used,
  * and returns a Supabase session token for the client to sign in with.
  */
 export async function POST(req: NextRequest) {
   try {
-    const { phone, otp } = await req.json();
-    if (!phone?.trim() || !otp?.trim()) {
-      return NextResponse.json({ error: "Phone and code are required." }, { status: 400 });
+    const { email, otp } = await req.json();
+    if (!email?.trim() || !otp?.trim()) {
+      return NextResponse.json({ error: "Email and code are required." }, { status: 400 });
     }
 
+    const normalizedEmail = normalizeAuthEmail(email.trim());
     const supabase = await createAdminClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabase as any;
 
-    const normalized = formatPhone(phone.trim());
-
-    // Find a valid, unused, non-expired OTP record
     const { data: records } = await db
-      .from("phone_otps")
+      .from("email_otps")
       .select("id, email, otp, expires_at, used")
-      .eq("phone", normalized)
+      .eq("email", normalizedEmail)
       .eq("used", false)
       .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false })
@@ -44,8 +42,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Incorrect code. Please try again." }, { status: 400 });
     }
 
-    // Mark OTP as used immediately to prevent replay
-    await db.from("phone_otps").update({ used: true }).eq("id", record.id);
+    await db.from("email_otps").update({ used: true }).eq("id", record.id);
 
     const session = await createLoginSessionToken(supabase, record.email);
     if (!session) {
@@ -61,7 +58,7 @@ export async function POST(req: NextRequest) {
       token_hash: session.token_hash,
     });
   } catch (err) {
-    console.error("[Verify Phone OTP]", err);
+    console.error("[Verify Email OTP]", err);
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

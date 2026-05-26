@@ -128,6 +128,20 @@ CREATE TABLE IF NOT EXISTS public.phone_otps (
 CREATE INDEX IF NOT EXISTS idx_phone_otps_phone      ON public.phone_otps(phone);
 CREATE INDEX IF NOT EXISTS idx_phone_otps_expires_at ON public.phone_otps(expires_at);
 
+-- Email OTPs — temporary codes for passwordless email login
+-- Accessed exclusively via the service-role admin client; no RLS required.
+CREATE TABLE IF NOT EXISTS public.email_otps (
+  id         UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  email      TEXT        NOT NULL,
+  otp        TEXT        NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '10 minutes'),
+  used       BOOLEAN     NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ          DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_otps_email      ON public.email_otps(email);
+CREATE INDEX IF NOT EXISTS idx_email_otps_expires_at ON public.email_otps(expires_at);
+
 -- Products
 CREATE TABLE IF NOT EXISTS public.products (
   id           UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -450,9 +464,10 @@ BEGIN
   END IF;
 END $$;
 
--- ── phone_otps: purge expired rows ───────────────────────────────────────────
+-- ── phone_otps / email_otps: purge expired rows ──────────────────────────────
 -- Safe to re-run; removes codes older than 1 hour to keep the table tidy.
 DELETE FROM public.phone_otps WHERE expires_at < NOW() - INTERVAL '1 hour';
+DELETE FROM public.email_otps WHERE expires_at < NOW() - INTERVAL '1 hour';
 
 -- ── users: portal_access column ──────────────────────────────────────────────
 -- Stores which admin portal sections each user can access.

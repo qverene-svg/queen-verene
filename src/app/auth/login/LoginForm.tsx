@@ -164,19 +164,14 @@ export default function LoginForm() {
     setLoading(true);
 
     if (inputMode === "email") {
-      // Supabase built-in email OTP
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOtp({
-        email: normalizeAuthEmail(identifier),
-        options: { shouldCreateUser: false },
+      const res = await fetch("/api/auth/send-email-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: identifier }),
       });
-      if (error) {
-        // If user doesn't exist Supabase returns a generic error; give a clear message
-        if (error.message.toLowerCase().includes("not found") || error.status === 422 || error.status === 400) {
-          toast.error("No account found for this email. Please register first.");
-        } else {
-          toast.error(error.message);
-        }
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Could not send code.");
         setLoading(false);
         return;
       }
@@ -215,13 +210,24 @@ export default function LoginForm() {
     const supabase = createClient();
 
     if (inputMode === "email") {
+      const res = await fetch("/api/auth/verify-email-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: identifier, otp: code }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Invalid or expired code.");
+        setLoading(false);
+        return;
+      }
       const { error, data } = await supabase.auth.verifyOtp({
-        email: normalizeAuthEmail(identifier),
-        token: code,
-        type:  "email",
+        email:      json.email,
+        token:      json.token_hash,
+        type:       "magiclink",
       });
       if (error) {
-        toast.error("Invalid or expired code. Request a new one.");
+        toast.error("Could not sign in. Please try again.");
         setLoading(false);
         return;
       }
@@ -275,10 +281,10 @@ export default function LoginForm() {
     setResending(true);
     setOtp("");
     if (inputMode === "email") {
-      const supabase = createClient();
-      await supabase.auth.signInWithOtp({
-        email: normalizeAuthEmail(identifier),
-        options: { shouldCreateUser: false },
+      await fetch("/api/auth/send-email-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: identifier }),
       });
     } else {
       await fetch("/api/auth/send-phone-otp", {
