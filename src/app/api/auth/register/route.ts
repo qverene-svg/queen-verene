@@ -72,7 +72,8 @@ export async function POST(req: NextRequest) {
       email: normalizedEmail,
     });
 
-    if (linkError || !linkData?.properties?.hashed_token) {
+    const token = linkData?.properties?.email_otp;
+    if (linkError || !token) {
       // Account created OK; tell the client to sign in via OTP instead
       console.warn("[Register] generateLink failed:", linkError);
       return NextResponse.json({
@@ -83,10 +84,10 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      success:    true,
-      autoLogin:  true,
-      email:      normalizedEmail,
-      token_hash: linkData.properties.hashed_token,
+      success:   true,
+      autoLogin: true,
+      email:     normalizedEmail,
+      token,
     });
   } catch (err) {
     console.error("[Register]", err);

@@ -44,9 +44,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Incorrect code. Please try again." }, { status: 400 });
     }
 
-    // Mark OTP as used immediately to prevent replay
-    await db.from("phone_otps").update({ used: true }).eq("id", record.id);
-
     const session = await createLoginSessionToken(supabase, record.email);
     if (!session) {
       return NextResponse.json(
@@ -55,10 +52,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    await db.from("phone_otps").update({ used: true }).eq("id", record.id);
+
     return NextResponse.json({
       success: true,
       email: session.email,
-      token_hash: session.token_hash,
+      token: session.token,
     });
   } catch (err) {
     console.error("[Verify Phone OTP]", err);

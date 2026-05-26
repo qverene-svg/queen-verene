@@ -42,8 +42,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Incorrect code. Please try again." }, { status: 400 });
     }
 
-    await db.from("email_otps").update({ used: true }).eq("id", record.id);
-
     const session = await createLoginSessionToken(supabase, record.email);
     if (!session) {
       return NextResponse.json(
@@ -52,10 +50,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    await db.from("email_otps").update({ used: true }).eq("id", record.id);
+
     return NextResponse.json({
       success: true,
       email: session.email,
-      token_hash: session.token_hash,
+      token: session.token,
     });
   } catch (err) {
     console.error("[Verify Email OTP]", err);

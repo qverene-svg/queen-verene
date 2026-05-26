@@ -222,9 +222,9 @@ export default function LoginForm() {
         return;
       }
       const { error, data } = await supabase.auth.verifyOtp({
-        email:      json.email,
-        token:      json.token_hash,
-        type:       "magiclink",
+        email: json.email,
+        token: json.token,
+        type:  "email",
       });
       if (error) {
         toast.error("Could not sign in. Please try again.");
@@ -233,7 +233,7 @@ export default function LoginForm() {
       }
       await afterSignIn(data.user?.id, supabase);
     } else {
-      // Exchange our custom phone OTP for a magic-link token
+      // Exchange our custom phone OTP for a Supabase session token
       const res = await fetch("/api/auth/verify-phone-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -245,11 +245,10 @@ export default function LoginForm() {
         setLoading(false);
         return;
       }
-      // Sign in with the magic-link token the server generated
       const { error, data } = await supabase.auth.verifyOtp({
-        email:      json.email,
-        token:      json.token_hash,
-        type:       "magiclink",
+        email: json.email,
+        token: json.token,
+        type:  "email",
       });
       if (error) {
         toast.error("Could not sign in. Please try again.");

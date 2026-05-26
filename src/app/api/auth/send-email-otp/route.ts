@@ -36,11 +36,19 @@ export async function POST(req: NextRequest) {
     const otp = generateOtp();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-    await db.from("email_otps").insert({
+    const { error: insertError } = await db.from("email_otps").insert({
       email: normalizedEmail,
       otp,
       expires_at: expiresAt,
     });
+
+    if (insertError) {
+      console.error("[Email OTP] Insert error:", insertError);
+      return NextResponse.json(
+        { error: "Could not create login code. Please try again." },
+        { status: 500 }
+      );
+    }
 
     const resendKey = process.env.RESEND_API_KEY;
     if (!resendKey || resendKey === "your_resend_api_key") {

@@ -43,13 +43,12 @@ export default function RegisterForm() {
       return;
     }
 
-    if (json.autoLogin && json.token_hash && json.email) {
-      // Silently sign the user in using the magic-link token the server generated
+    if (json.autoLogin && json.token && json.email) {
       const supabase = createClient();
       const { error } = await supabase.auth.verifyOtp({
         email: json.email,
-        token: json.token_hash,
-        type:  "magiclink",
+        token: json.token,
+        type:  "email",
       });
       if (error) {
         // Auto-login failed — fall back to asking them to sign in

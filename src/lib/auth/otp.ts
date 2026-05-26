@@ -9,16 +9,18 @@ export function generateOtp(): string {
 export async function createLoginSessionToken(
   supabase: SupabaseClient,
   email: string
-): Promise<{ email: string; token_hash: string } | null> {
+): Promise<{ email: string; token: string } | null> {
   const { data, error } = await supabase.auth.admin.generateLink({
     type: "magiclink",
     email,
   });
 
-  if (error || !data?.properties?.hashed_token) {
+  // hashed_token is for link redirects; email_otp is what verifyOtp({ type: "email" }) expects.
+  const token = data?.properties?.email_otp;
+  if (error || !token) {
     console.error("[Auth OTP] generateLink error:", error);
     return null;
   }
 
-  return { email, token_hash: data.properties.hashed_token };
+  return { email, token };
 }
