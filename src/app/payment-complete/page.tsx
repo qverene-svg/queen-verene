@@ -6,20 +6,50 @@ import Link from "next/link";
 
 // ── Inner component (uses useSearchParams — must be inside <Suspense>) ─────────
 
+type UiStatus = "success" | "failed" | "pending" | "unknown" | "verifying";
+
 function PaymentCompleteContent() {
   const params  = useSearchParams();
-  const [status, setStatus] = useState<"success" | "failed" | "pending" | "unknown">("unknown");
-
-  useEffect(() => {
-    const s = (params.get("status") || "").toLowerCase();
-    if (s === "success")      setStatus("success");
-    else if (s === "failed")  setStatus("failed");
-    else if (s === "pending") setStatus("pending");
-    else                      setStatus("unknown");
-  }, [params]);
+  const [status, setStatus] = useState<UiStatus>("verifying");
 
   const ref  = params.get("clientReference") || params.get("ClientReference") || "";
   const txId = params.get("transactionId")   || params.get("TransactionId")   || "";
+
+  useEffect(() => {
+    const redirectStatus = (params.get("status") || "").toLowerCase();
+
+    async function verifyWithHubtel() {
+      if (!ref && !txId) {
+        if (redirectStatus === "success")      setStatus("success");
+        else if (redirectStatus === "failed")  setStatus("failed");
+        else if (redirectStatus === "pending") setStatus("pending");
+        else setStatus("unknown");
+        return;
+      }
+
+      setStatus("verifying");
+      try {
+        const q = new URLSearchParams({ sync: "1" });
+        if (ref) q.set("clientReference", ref);
+        if (txId) q.set("hubtelTransactionId", txId);
+        const res = await fetch(`/api/payments/status?${q.toString()}`);
+        const json = await res.json();
+
+        if (json.status === "paid")       setStatus("success");
+        else if (json.status === "failed") setStatus("failed");
+        else if (json.status === "pending") setStatus("pending");
+        else if (redirectStatus === "success") setStatus("success");
+        else if (redirectStatus === "failed")  setStatus("failed");
+        else setStatus("unknown");
+      } catch {
+        if (redirectStatus === "success")      setStatus("success");
+        else if (redirectStatus === "failed")  setStatus("failed");
+        else setStatus("pending");
+      }
+    }
+
+    verifyWithHubtel();
+  }, [params, ref, txId]);
 
   const config = {
     success: {
@@ -41,6 +71,11 @@ function PaymentCompleteContent() {
       icon:    <Clock size={52} style={{ color: "rgba(255,255,255,0.25)" }} />,
       title:   "Payment Status",
       message: "Your payment is being verified. Please check your booking in your dashboard.",
+    },
+    verifying: {
+      icon:    <Clock size={52} style={{ color: "rgba(255,255,255,0.25)" }} />,
+      title:   "Verifying Payment",
+      message: "Confirming your payment with Hubtel…",
     },
   }[status];
 

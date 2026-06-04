@@ -268,7 +268,11 @@ function DashboardInner() {
                     <div className="space-y-4">
                       {upcoming.map((appt, i) => (
                         <motion.div key={appt.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
-                          <AppointmentCard appt={appt} onCancel={() => { setCancelTarget(appt.id); setConfirmCancel(true); }} />
+                          <AppointmentCard
+                            appt={appt}
+                            onCancel={() => { setCancelTarget(appt.id); setConfirmCancel(true); }}
+                            onPaymentSynced={refreshAppointments}
+                          />
                         </motion.div>
                       ))}
                     </div>
@@ -281,7 +285,7 @@ function DashboardInner() {
                     <div className="space-y-4">
                       {past.map((appt, i) => (
                         <motion.div key={appt.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
-                          <AppointmentCard appt={appt} />
+                          <AppointmentCard appt={appt} onPaymentSynced={refreshAppointments} />
                         </motion.div>
                       ))}
                     </div>
@@ -360,9 +364,42 @@ function DashboardInner() {
   );
 }
 
-function AppointmentCard({ appt, onCancel }: { appt: Appointment; onCancel?: () => void }) {
+function AppointmentCard({
+  appt,
+  onCancel,
+  onPaymentSynced,
+}: {
+  appt: Appointment;
+  onCancel?: () => void;
+  onPaymentSynced?: () => void;
+}) {
   const badge     = STATUS_BADGE[appt.status] ?? { label: appt.status, variant: "gray" as const };
   const canCancel = (appt.status === "pending" || appt.status === "confirmed") && !!onCancel;
+
+  const needsDeposit = appt.status === "pending" && appt.payment_status === "unpaid" && appt.deposit_paid === 0;
+  const [checkingPayment, setCheckingPayment] = useState(false);
+
+  const handleCheckPayment = async () => {
+    setCheckingPayment(true);
+    try {
+      const res = await fetch(
+        `/api/payments/status?clientReference=${encodeURIComponent(appt.id)}&sync=1`
+      );
+      const json = await res.json();
+      if (json.status === "paid") {
+        toast.success("Payment confirmed! Your booking is updated.");
+        onPaymentSynced?.();
+      } else if (json.status === "failed") {
+        toast.error("Payment was not completed. Please try paying again.");
+      } else {
+        toast("Payment still pending on Hubtel. Try again in a moment.", { icon: "⏳" });
+      }
+    } catch {
+      toast.error("Could not check payment status.");
+    } finally {
+      setCheckingPayment(false);
+    }
+  };
 
   // Remaining balance: show "Make Payment" if deposit was paid but full amount is not yet settled
   const remaining = appt.total_price - appt.deposit_paid;
@@ -423,6 +460,16 @@ function AppointmentCard({ appt, onCancel }: { appt: Appointment; onCancel?: () 
           <p className="text-xs text-[#0a0a0a]/35 mt-0.5">
             {appt.deposit_paid > 0 ? `Paid: ${formatCurrency(appt.deposit_paid)}` : "Deposit pending"}
           </p>
+          {needsDeposit && (
+            <button
+              onClick={handleCheckPayment}
+              disabled={checkingPayment}
+              className="mt-3 flex items-center gap-1.5 px-4 py-2 bg-[#0a0a0a] hover:bg-[#222] disabled:opacity-60 text-white rounded-full text-xs font-semibold tracking-wide uppercase transition-colors ml-auto"
+            >
+              <CreditCard size={11} />
+              {checkingPayment ? "Checking…" : "Verify payment"}
+            </button>
+          )}
           {canPayBalance && (
             <button
               onClick={handlePayBalance}
@@ -433,7 +480,7 @@ function AppointmentCard({ appt, onCancel }: { appt: Appointment; onCancel?: () 
               {payingBalance ? "Redirecting…" : `Make Payment — ${formatCurrency(remaining)}`}
             </button>
           )}
-          {canCancel && !canPayBalance && (
+          {canCancel && !canPayBalance && !needsDeposit && (
             <button onClick={onCancel}
               className="mt-3 flex items-center gap-1 text-xs text-[#b22222]/60 hover:text-[#b22222] transition-colors ml-auto">
               <XCircle size={12} />
